@@ -1,0 +1,620 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard | Sereno Verde</title>
+
+<link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+
+<!-- LEFT SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+
+    <a href="index.html" class="brand">
+        <span class="brand-logo">
+            <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <path d="M30 7C17 7 9 13 9 23c0 5 4 8 8 8 10 0 13-12 13-24Z"
+                    stroke="currentColor" stroke-width="1.5"/>
+                <path d="M8 34C13 24 20 17 28 11"
+                    stroke="currentColor" stroke-width="1.5"/>
+                <path d="M15 25c-1-5-4-8-8-9M21 18c4 0 7 1 9 4"
+                    stroke="currentColor" stroke-width="1.2"/>
+            </svg>
+        </span>
+        <span>
+            <span class="brand-name">Sereno Verde</span>
+            <span class="brand-caption">Admin workspace</span>
+        </span>
+    </a>
+
+    <div class="sidebar-label">Workspace</div>
+
+    <nav class="nav-list" aria-label="Admin navigation">
+        <button class="nav-item active" data-page="overview">
+            <span class="nav-icon">▦</span> Overview
+        </button>
+
+        <button class="nav-item" data-page="new-bookings">
+            <span class="nav-icon">▤</span> New Bookings
+            <span class="nav-badge" id="pendingBadge">0</span>
+        </button>
+
+        <button class="nav-item" data-page="booking-management">
+            <span class="nav-icon">▣</span> Booking Management
+        </button>
+
+        <button class="nav-item" data-page="calendar">
+            <span class="nav-icon">▦</span> Reservation Calendar
+        </button>
+
+        <button class="nav-item" data-page="accommodations">
+            <span class="nav-icon">⌂</span> Accommodations
+        </button>
+
+        <button class="nav-item" data-page="guests">
+            <span class="nav-icon">♙</span> Guest Management
+        </button>
+
+        <button class="nav-item" data-page="reviews">
+            <span class="nav-icon">☆</span> Reviews & Feedback
+        </button>
+    </nav>
+
+    <div class="sidebar-label">System</div>
+
+    <nav class="nav-list">
+        <button class="nav-item" data-page="settings">
+            <span class="nav-icon">⚙</span> Settings
+        </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+        <a class="nav-item" href="index.html">
+            <span class="nav-icon">↗</span> View Website
+        </a>
+
+        <div class="admin-profile">
+            <div class="avatar">AD</div>
+            <div>
+                <div class="profile-name">Administrator</div>
+                <div class="profile-role">Dashboard access</div>
+            </div>
+        </div>
+    </div>
+
+</aside>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+    <header class="topbar">
+        <div class="topbar-left">
+            <button class="menu-button" id="menuButton" aria-label="Open menu">☰</button>
+            <div class="breadcrumb">
+                Sereno Verde &nbsp; / &nbsp; <strong id="breadcrumbText">Overview</strong>
+            </div>
+        </div>
+
+        <div class="topbar-right">
+            <div class="today-label" id="todayLabel"></div>
+            <div class="topbar-avatar">AD</div>
+        </div>
+    </header>
+
+    <main class="content">
+
+        <!-- OVERVIEW -->
+        <section class="page-section active" id="page-overview">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">Your resort at a glance</div>
+                    <h1>Welcome back, Administrator.</h1>
+                    <p>Here's what's happening at Sereno Verde.</p>
+                </div>
+
+                <div class="heading-actions">
+                    <button class="btn" id="refreshOverview">↻ Refresh data</button>
+                    <button class="btn btn-primary" data-go-page="new-bookings">＋ View bookings</button>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+
+                <article class="stat-card">
+                    <div class="stat-top">
+                        <span class="stat-label">Total Bookings</span>
+                        <span class="stat-icon icon-brown">▤</span>
+                    </div>
+                    <div class="stat-value" id="totalBookings">0</div>
+                    <div class="stat-foot">All booking records retrieved from the server</div>
+                </article>
+
+                <article class="stat-card">
+                    <div class="stat-top">
+                        <span class="stat-label">Pending Requests</span>
+                        <span class="stat-icon icon-blue">◷</span>
+                    </div>
+                    <div class="stat-value" id="pendingBookings">0</div>
+                    <div class="stat-foot">Bookings awaiting review or confirmation</div>
+                </article>
+
+                <article class="stat-card">
+                    <div class="stat-top">
+                        <span class="stat-label">This Month</span>
+                        <span class="stat-icon icon-green">▦</span>
+                    </div>
+                    <div class="stat-value" id="monthlyBookings">0</div>
+                    <div class="stat-foot">Bookings with dates in the current month</div>
+                </article>
+
+                <article class="stat-card">
+                    <div class="stat-top">
+                        <span class="stat-label">Cancelled</span>
+                        <span class="stat-icon icon-red">×</span>
+                    </div>
+                    <div class="stat-value" id="cancelledBookings">0</div>
+                    <div class="stat-foot">Cancelled or rejected booking records</div>
+                </article>
+
+            </div>
+
+            <div class="chart-grid">
+
+                <article class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Monthly Booking Quantity</h2>
+                            <p>Booking volume over the last 12 months</p>
+                        </div>
+                        <span class="panel-tag">12 months</span>
+                    </div>
+
+                    <div class="chart-legend">
+                        <span class="legend-dot"></span> Number of bookings
+                    </div>
+
+                    <div class="chart-container">
+                        <svg id="monthlyChart" viewBox="0 0 600 260"
+                            role="img" aria-label="Bookings per month for the last twelve months"></svg>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Yearly Booking Quantity</h2>
+                            <p>Annual booking history since 2020</p>
+                        </div>
+                        <span class="panel-tag">2020 onward</span>
+                    </div>
+
+                    <div class="chart-legend">
+                        <span class="legend-dot" style="background:var(--brown)"></span>
+                        Annual bookings
+                    </div>
+
+                    <div class="chart-container">
+                        <svg id="yearlyChart" viewBox="0 0 440 260"
+                            role="img" aria-label="Bookings by year starting 2020"></svg>
+                    </div>
+                </article>
+
+            </div>
+
+            <div class="quick-grid">
+                <article class="quick-card">
+                    <h3>Review New Bookings</h3>
+                    <p>View reservation dates, guest names, accommodation choices, and requests awaiting review.</p>
+                    <button class="btn btn-brown" data-go-page="new-bookings">Open new bookings →</button>
+                </article>
+
+                <article class="quick-card blue">
+                    <h3>Manage Reservations</h3>
+                    <p>Review booking records and update their status after checking availability and guest details.</p>
+                    <button class="btn btn-primary" data-go-page="booking-management">Manage reservations →</button>
+                </article>
+            </div>
+
+            <article class="panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Recent Booking Activity</h2>
+                        <p>The most recently created records available from the backend</p>
+                    </div>
+                    <button class="btn" data-go-page="booking-management">View all</button>
+                </div>
+                <div id="recentBookings"></div>
+            </article>
+
+        </section>
+
+        <!-- NEW BOOKINGS -->
+        <section class="page-section" id="page-new-bookings">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">Reservation schedule</div>
+                    <h1>New Bookings</h1>
+                    <p>Bookings are grouped by month and then by reservation date. Multiple guests can appear on the same date.</p>
+                </div>
+                <div class="heading-actions">
+                    <button class="btn" id="refreshNewBookings">↻ Refresh</button>
+                    <button class="btn btn-primary" id="newBookingButton">＋ Add booking</button>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <label for="bookingMonthFilter">Month</label>
+                    <select class="control" id="bookingMonthFilter"></select>
+
+                    <label for="bookingYearFilter">Year</label>
+                    <select class="control" id="bookingYearFilter"></select>
+                </div>
+
+                <div class="toolbar-right">
+                    <input class="control" id="bookingSearch"
+                        type="search" placeholder="Search guest or villa...">
+                </div>
+            </div>
+
+            <h2 class="booking-month-title" id="bookingMonthHeading">Bookings</h2>
+            <div class="booking-date-grid" id="bookingDateGrid"></div>
+
+        </section>
+
+        <!-- BOOKING MANAGEMENT -->
+        <section class="page-section" id="page-booking-management">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">Reservations and status</div>
+                    <h1>Booking Management</h1>
+                    <p>Review guest reservations and maintain booking status.</p>
+                </div>
+                <div class="heading-actions">
+                    <button class="btn" id="refreshManagement">↻ Refresh</button>
+                    <button class="btn btn-primary" id="managementAddButton">＋ Add booking</button>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <select class="control" id="managementStatusFilter">
+                        <option value="all">All statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+
+                    <select class="control" id="managementTypeFilter">
+                        <option value="all">All stay types</option>
+                        <option value="daycation">Daycation</option>
+                        <option value="nightcation">Nightcation</option>
+                        <option value="22hours">22 Hours stay</option>
+                    </select>
+                </div>
+
+                <input class="control" id="managementSearch"
+                    type="search" placeholder="Search bookings...">
+            </div>
+
+            <article class="panel">
+                <div class="table-wrap" id="managementTable"></div>
+            </article>
+
+        </section>
+
+        <!-- CALENDAR -->
+        <section class="page-section" id="page-calendar">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">Availability overview</div>
+                    <h1>Reservation Calendar</h1>
+                    <p>Review reservations by date. Use the accommodation filter to narrow the view.</p>
+                </div>
+                <button class="btn" id="calendarRefresh">↻ Refresh</button>
+            </div>
+
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <button class="btn" id="calendarPrevious">← Previous</button>
+                    <span id="adminCalendarMonth" style="font-size:14px;font-weight:600"></span>
+                    <button class="btn" id="calendarNext">Next →</button>
+                </div>
+
+                <select class="control" id="calendarAccommodationFilter">
+                    <option value="all">All accommodations</option>
+                    <option value="tuscan villa">Tuscan Villa</option>
+                    <option value="spanish villa">Spanish Villa</option>
+                    <option value="other">Other / unspecified</option>
+                </select>
+            </div>
+
+            <article class="panel">
+                <div class="calendar-admin-grid" id="adminCalendarGrid"
+                    style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px"></div>
+            </article>
+
+            <div style="height:18px"></div>
+
+            <article class="panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Selected Date Details</h2>
+                        <p id="adminCalendarSelectedLabel">Select a date to see reservations.</p>
+                    </div>
+                </div>
+                <div id="adminCalendarSelectedBookings"></div>
+            </article>
+
+        </section>
+
+        <!-- ACCOMMODATIONS -->
+        <section class="page-section" id="page-accommodations">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">Villa and unit overview</div>
+                    <h1>Accommodations</h1>
+                    <p>View your resort accommodation list and open booking records for each unit.</p>
+                </div>
+            </div>
+
+            <div class="info-box">
+                This page starts with the known villa names. You can later connect it to a dedicated accommodation table to manage capacity, prices, photos, and availability.
+            </div>
+
+            <div class="accommodation-grid">
+
+                <article class="accommodation-card">
+                    <div class="accommodation-cover">
+                        <span class="accommodation-symbol">⌂</span>
+                        <small>Accommodation 01</small>
+                    </div>
+                    <div class="accommodation-info">
+                        <h3>Tuscan Villa</h3>
+                        <p>View booking records associated with Tuscan Villa.</p>
+                        <div class="accommodation-actions">
+                            <span class="status-pill">Villa</span>
+                            <button class="btn" data-accommodation-search="Tuscan Villa">View bookings</button>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="accommodation-card">
+                    <div class="accommodation-cover blue">
+                        <span class="accommodation-symbol">⌂</span>
+                        <small>Accommodation 02</small>
+                    </div>
+                    <div class="accommodation-info">
+                        <h3>Spanish Villa</h3>
+                        <p>View booking records associated with Spanish Villa.</p>
+                        <div class="accommodation-actions">
+                            <span class="status-pill">Villa</span>
+                            <button class="btn" data-accommodation-search="Spanish Villa">View bookings</button>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="accommodation-card">
+                    <div class="accommodation-cover green">
+                        <span class="accommodation-symbol">＋</span>
+                        <small>Additional units</small>
+                    </div>
+                    <div class="accommodation-info">
+                        <h3>Other Accommodations</h3>
+                        <p>View records for other or unspecified accommodation names.</p>
+                        <div class="accommodation-actions">
+                            <span class="status-pill">Other</span>
+                            <button class="btn" data-accommodation-search="Other">View bookings</button>
+                        </div>
+                    </div>
+                </article>
+
+            </div>
+
+        </section>
+
+        <!-- GUESTS -->
+        <section class="page-section" id="page-guests">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">Guest directory</div>
+                    <h1>Guest Management</h1>
+                    <p>Guest information is gathered from available booking records.</p>
+                </div>
+                <button class="btn" id="refreshGuests">↻ Refresh</button>
+            </div>
+
+            <div class="stats-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));max-width:600px">
+                <article class="stat-card">
+                    <div class="stat-label">Unique Guests</div>
+                    <div class="stat-value" id="uniqueGuests">0</div>
+                    <div class="stat-foot">Based on names or email addresses in the records</div>
+                </article>
+                <article class="stat-card">
+                    <div class="stat-label">Records with Email</div>
+                    <div class="stat-value" id="guestsWithEmail">0</div>
+                    <div class="stat-foot">Guest records containing an email address</div>
+                </article>
+            </div>
+
+            <div class="toolbar">
+                <input class="control" id="guestSearch" type="search"
+                    placeholder="Search guest name, email, or phone...">
+            </div>
+
+            <article class="panel">
+                <div class="table-wrap" id="guestTable"></div>
+            </article>
+
+        </section>
+
+        <!-- REVIEWS -->
+        <section class="page-section" id="page-reviews">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">Guest experience</div>
+                    <h1>Reviews & Feedback</h1>
+                    <p>Review feedback submitted by guests to help improve their stay.</p>
+                </div>
+            </div>
+
+            <div class="info-box">
+                Feedback cards will appear here once the system is connected to a reviews table or feedback API. The existing booking records do not automatically contain review text or ratings.
+            </div>
+
+            <article class="panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Guest Feedback</h2>
+                        <p>Feedback records retrieved from the server</p>
+                    </div>
+                    <button class="btn" id="refreshReviews">↻ Refresh</button>
+                </div>
+                <div id="reviewContent" class="review-list"></div>
+            </article>
+
+        </section>
+
+        <!-- SETTINGS -->
+        <section class="page-section" id="page-settings">
+
+            <div class="page-heading">
+                <div>
+                    <div class="eyebrow">Workspace preferences</div>
+                    <h1>Settings</h1>
+                    <p>Configure basic dashboard display preferences.</p>
+                </div>
+            </div>
+
+            <article class="panel settings-form">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Resort Information</h2>
+                        <p>These details are currently saved in this browser only.</p>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    These settings do not update the backend database or change the public website. Server-side settings can be added later.
+                </div>
+
+                <form id="settingsForm">
+                    <div class="field">
+                        <label for="settingResortName">Resort name</label>
+                        <input id="settingResortName" value="Sereno Verde" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="settingLocation">Resort location</label>
+                        <input id="settingLocation" value="Pililla, Rizal, Philippines">
+                    </div>
+
+                    <div class="field">
+                        <label for="settingAdminName">Display administrator name</label>
+                        <input id="settingAdminName" value="Administrator">
+                    </div>
+
+                    <div class="field">
+                        <label for="settingTimezone">Display timezone</label>
+                        <select id="settingTimezone">
+                            <option value="Asia/Manila" selected>Philippine Time (Asia/Manila)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save display settings</button>
+                </form>
+            </article>
+
+        </section>
+
+        <div class="footer-note">
+            Sereno Verde Admin Workspace · Booking information depends on records available from the server.
+        </div>
+
+    </main>
+</div>
+
+<!-- BOOKING DETAILS / STATUS MODAL -->
+<div class="modal-overlay" id="bookingModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">Booking details</h2>
+            <button class="close-modal" id="closeModal" type="button" aria-label="Close">×</button>
+        </div>
+
+        <form id="bookingEditForm">
+            <input type="hidden" id="editBookingId">
+
+            <div class="field">
+                <label for="editGuestName">Guest name</label>
+                <input id="editGuestName" readonly>
+            </div>
+
+            <div class="field">
+                <label for="editBookingDate">Booking date</label>
+                <input id="editBookingDate" type="date" required>
+            </div>
+
+            <div class="field">
+                <label for="editAccommodation">Accommodation</label>
+                <select id="editAccommodation" required>
+                    <option value="Tuscan Villa">Tuscan Villa</option>
+                    <option value="Spanish Villa">Spanish Villa</option>
+                    <option value="Other">Other / To be confirmed</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="editBookingType">Stay type</label>
+                <select id="editBookingType">
+                    <option value="daycation">Daycation</option>
+                    <option value="nightcation">Nightcation</option>
+                    <option value="22hours">22 Hours stay</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="editBookingStatus">Booking status</label>
+                <select id="editBookingStatus">
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="editAdminNotes">Admin notes (local draft only)</label>
+                <textarea id="editAdminNotes" placeholder="Add notes for this booking..."></textarea>
+            </div>
+
+            <div class="info-box">
+                Saving changes requires a compatible update endpoint in your Express backend. If it is not available, the dashboard will tell you rather than pretending the change was saved.
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn" id="cancelModal">Close</button>
+                <button type="submit" class="btn btn-primary">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="admin.js"></script>
+
+</body>
+</html>

@@ -1,31 +1,18 @@
-/*
-    BOOKING PAGE
-
-    API endpoint:
-    GET  /api/bookings
-    POST /api/bookings
-
-    This page expects the backend to return booking dates and
-    accommodation information for calendar availability.
-*/
 
 const API_URL = "/api/bookings";
 
 const calendarGrid = document.getElementById("calendarGrid");
 const monthTitle = document.getElementById("monthTitle");
 const calendarMessage = document.getElementById("calendarMessage");
-
 const bookingForm = document.getElementById("bookingForm");
 const submitButton = document.getElementById("submitButton");
 const statusMessage = document.getElementById("statusMessage");
-
 const bookingSummary = document.getElementById("bookingSummary");
 const summaryText = document.getElementById("summaryText");
 
 let currentDate = new Date(2026, 9, 1);
 let selectedDate = null;
 let selectedBookingType = "22hours";
-
 let bookings = [];
 let unavailableDates = new Map();
 
@@ -44,11 +31,7 @@ const bookingTypeDetails = {
     }
 };
 
-/*
-    These example colors match the supplied reference screenshot.
-    They are visual examples, not confirmed availability from the
-    server. Once the API loads, actual bookings take priority.
-*/
+// Sample calendar statuses for visual demonstration only.
 const sampleCalendarStatuses = {
     "2026-10-17": "daycation",
     "2026-10-18": "nightcation",
@@ -101,9 +84,7 @@ function normalizeBookingDate(booking) {
 
         const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
 
-        if (match) {
-            return match[1];
-        }
+        if (match) return match[1];
     }
 
     return null;
@@ -121,12 +102,13 @@ function normalizeAccommodation(booking) {
 
 function isSameAccommodation(booking) {
     const existing = normalizeAccommodation(booking);
+
     const selected = document.getElementById("accommodation").value
         .trim()
         .toLowerCase();
 
-    // If an older booking record has no accommodation field,
-    // treat it as unavailable for all accommodations on that date.
+    // If an older booking has no accommodation field,
+    // conservatively treat it as unavailable for all accommodations.
     if (!existing || !selected) return true;
 
     return existing === selected;
@@ -204,6 +186,7 @@ function renderCalendar() {
         button.type = "button";
         button.textContent = day;
         button.className = "calendar-day " + status;
+
         button.setAttribute(
             "aria-label",
             formatReadableDate(dateKey) + ", " + status
@@ -219,7 +202,11 @@ function renderCalendar() {
         if (isDateInPast(dateKey)) {
             button.disabled = true;
             button.classList.add("blocked");
-            button.classList.remove("available", "daycation", "nightcation");
+            button.classList.remove(
+                "available",
+                "daycation",
+                "nightcation"
+            );
             button.title = "Past dates cannot be selected";
         } else if (status === "booked" || status === "blocked") {
             button.disabled = true;
@@ -238,7 +225,11 @@ function renderCalendar() {
 function selectDate(dateKey) {
     const status = getStatusForDate(dateKey);
 
-    if (status === "booked" || status === "blocked" || isDateInPast(dateKey)) {
+    if (
+        status === "booked" ||
+        status === "blocked" ||
+        isDateInPast(dateKey)
+    ) {
         calendarMessage.textContent =
             "This date is unavailable. Please choose another date.";
         return;
@@ -271,12 +262,14 @@ function updateBookingSummary() {
     bookingSummary.classList.add("visible");
 }
 
+// Booking type selection
 document.querySelectorAll(".booking-option").forEach(option => {
     option.addEventListener("click", () => {
         selectedBookingType = option.dataset.type;
 
         document.querySelectorAll(".booking-option").forEach(item => {
             const isActive = item === option;
+
             item.classList.toggle("active", isActive);
             item.setAttribute("aria-pressed", String(isActive));
         });
@@ -286,12 +279,14 @@ document.querySelectorAll(".booking-option").forEach(option => {
     });
 });
 
+// Calendar navigation
 document.getElementById("previousMonth").addEventListener("click", () => {
     currentDate = new Date(
         currentDate.getFullYear(),
         currentDate.getMonth() - 1,
         1
     );
+
     renderCalendar();
 });
 
@@ -301,18 +296,17 @@ document.getElementById("nextMonth").addEventListener("click", () => {
         currentDate.getMonth() + 1,
         1
     );
+
     renderCalendar();
 });
 
+// Update availability when accommodation changes
 document.getElementById("accommodation").addEventListener("change", () => {
     renderCalendar();
     clearStatus();
 });
 
-/*
-    Load existing bookings from the backend.
-    The page remains usable if the server is temporarily unavailable.
-*/
+// Load existing bookings from the backend
 async function loadBookings() {
     try {
         const response = await fetch(API_URL);
@@ -331,21 +325,25 @@ async function loadBookings() {
 
         renderCalendar();
     } catch (error) {
-        console.warn("Booking availability could not be loaded:", error);
+        console.warn(
+            "Booking availability could not be loaded:",
+            error
+        );
+
         renderCalendar();
     }
 }
 
-/*
-    Submit the reservation to the existing API.
-    The backend must accept the field names sent below.
-*/
+// Submit booking and redirect to the confirmation page
 bookingForm.addEventListener("submit", async event => {
     event.preventDefault();
     clearStatus();
 
     if (!selectedDate) {
-        showStatus("Please select an available date on the calendar.", "error");
+        showStatus(
+            "Please select an available date on the calendar.",
+            "error"
+        );
         return;
     }
 
@@ -358,7 +356,10 @@ bookingForm.addEventListener("submit", async event => {
         document.getElementById("accommodation").value;
 
     if (!accommodation) {
-        showStatus("Please select a villa or accommodation.", "error");
+        showStatus(
+            "Please select a villa or accommodation.",
+            "error"
+        );
         return;
     }
 
@@ -369,7 +370,12 @@ bookingForm.addEventListener("submit", async event => {
             "This date is no longer available. Please select another date.",
             "error"
         );
+
         renderCalendar();
+        return;
+    }
+
+    if (!bookingForm.reportValidity()) {
         return;
     }
 
@@ -380,10 +386,13 @@ bookingForm.addEventListener("submit", async event => {
         booking_date: selectedDate,
         bookingDate: selectedDate,
         date: selectedDate,
+
         booking_type: selectedBookingType,
         bookingType: selectedBookingType,
+
         accommodation: accommodation,
         room: accommodation,
+
         fullName: formData.get("fullName"),
         fbName: formData.get("fbName"),
         email: formData.get("email"),
@@ -394,6 +403,7 @@ bookingForm.addEventListener("submit", async event => {
         eventType: formData.get("eventType"),
         guests: Number(formData.get("guests")),
         specialRequests: formData.get("specialRequests"),
+
         status: "pending"
     };
 
@@ -419,41 +429,26 @@ bookingForm.addEventListener("submit", async event => {
             );
         }
 
+        // Only redirect after the server accepts the booking.
         const bookingId =
             result.bookingId ??
             result.booking_id ??
             result.id ??
             result.insertId;
 
-        showStatus(
-            "Your booking request was submitted successfully." +
-            (bookingId ? " Booking ID: " + bookingId + "." : "") +
-            " Please wait for confirmation.",
-            "success"
+        const confirmationUrl = new URL(
+            "confirmation.html",
+            window.location.href
         );
 
-        /*
-            Reload records to update the calendar using the server.
-            Pending bookings should only block dates if your backend
-            considers them reserved.
-        */
-        await loadBookings();
+        if (bookingId !== undefined && bookingId !== null) {
+            confirmationUrl.searchParams.set(
+                "bookingId",
+                String(bookingId)
+            );
+        }
 
-        bookingForm.reset();
-        selectedDate = null;
-        selectedBookingType = "22hours";
-
-        document.querySelectorAll(".booking-option").forEach(option => {
-            const active = option.dataset.type === "22hours";
-            option.classList.toggle("active", active);
-            option.setAttribute("aria-pressed", String(active));
-        });
-
-        calendarMessage.textContent =
-            "Select a date for another booking.";
-
-        renderCalendar();
-        updateBookingSummary();
+        window.location.href = confirmationUrl.href;
 
     } catch (error) {
         showStatus(

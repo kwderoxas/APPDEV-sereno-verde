@@ -1,0 +1,176 @@
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      font-family: "Lato", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      background: #22201f;
+    }
+
+    .confirmation-page {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 30px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background:
+        linear-gradient(
+          rgba(74, 49, 37, 0.22),
+          rgba(74, 49, 37, 0.22)
+        ),
+        url("https://a0.muscache.com/im/pictures/hosting/Hosting-1491758183598216742/original/c7c99381-da37-4a8e-99cb-63f89046bc1d.jpeg?im_w=1920");
+
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+    }
+
+    /* Back link */
+    .back-link {
+      position: absolute;
+      top: 25px;
+      left: 34px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 400;
+      text-decoration: none;
+      text-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+      transition: opacity 0.2s;
+    }
+
+    .back-link:hover {
+      opacity: 0.75;
+    }
+
+    /* Confirmation card */
+    .confirmation-card {
+      width: 100%;
+      max-width: 420px;
+      min-height: 340px;
+      padding: 45px 30px 24px;
+      border-radius: 25px;
+      background: #f0e8e8;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+      text-align: center;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Text-based brand mark */
+    .brand-name {
+      margin-bottom: 23px;
+      color: #403837;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 25px;
+      font-weight: 400;
+      line-height: 0.82;
+      letter-spacing: -0.7px;
+      text-transform: uppercase;
+    }
+
+    .brand-name span {
+      display: block;
+    }
+
+    .thank-you {
+      margin-bottom: 17px;
+      color: #a76037;
+      font-family: "Lato", sans-serif;
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .confirmation-message {
+      max-width: 265px;
+      color: #6c6463;
+      font-size: 12px;
+      font-weight: 300;
+      line-height: 1.45;
+    }
+
+    .contact-message {
+      margin-top: 19px;
+      color: #262222;
+      font-size: 9px;
+      font-weight: 400;
+      line-height: 1.5;
+    }
+
+    .back-menu-button {
+      width: 100%;
+      min-height: 38px;
+      margin-top: auto;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 25px;
+      background: #b66f43;
+      color: #fff;
+      font-family: "Lato", sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .back-menu-button:hover {
+      background: #995832;
+    }
+
+    .back-menu-button:focus-visible,
+    .back-link:focus-visible {
+      outline: 2px solid #7e4c31;
+      outline-offset: 4px;
+    }
+
+    @media (max-width: 480px) {
+      .confirmation-page {
+        padding: 65px 20px 25px;
+      }
+
+      .back-link {
+        top: 22px;
+        left: 22px;
+      }
+
+      .confirmation-card {
+        max-width: 370px;
+        min-height: 350px;
+        padding: 43px 25px 24px;
+      }
+    }
+
+    @media (max-height: 480px) {
+      .confirmation-page {
+        align-items: flex-start;
+      }
+
+      .confirmation-card {
+        min-height: 330px;
+        margin: 15px 0;
+        padding-top: 30px;
+      }
+    }
+  

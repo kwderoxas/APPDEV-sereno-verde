@@ -1,11 +1,8 @@
 
-const API_URL = "/api/bookings";
-
 const calendarGrid = document.getElementById("calendarGrid");
 const monthTitle = document.getElementById("monthTitle");
 const calendarMessage = document.getElementById("calendarMessage");
 const bookingForm = document.getElementById("bookingForm");
-const submitButton = document.getElementById("submitButton");
 const statusMessage = document.getElementById("statusMessage");
 const bookingSummary = document.getElementById("bookingSummary");
 const summaryText = document.getElementById("summaryText");
@@ -306,36 +303,8 @@ document.getElementById("accommodation").addEventListener("change", () => {
     clearStatus();
 });
 
-// Load existing bookings from the backend
-async function loadBookings() {
-    try {
-        const response = await fetch(API_URL);
-
-        if (!response.ok) {
-            throw new Error("Could not retrieve bookings.");
-        }
-
-        const data = await response.json();
-
-        bookings = Array.isArray(data)
-            ? data
-            : Array.isArray(data.bookings)
-                ? data.bookings
-                : [];
-
-        renderCalendar();
-    } catch (error) {
-        console.warn(
-            "Booking availability could not be loaded:",
-            error
-        );
-
-        renderCalendar();
-    }
-}
-
-// Submit booking and redirect to the confirmation page
-bookingForm.addEventListener("submit", async event => {
+// Submit booking details and redirect to the confirmation page.
+bookingForm.addEventListener("submit", event => {
     event.preventDefault();
     clearStatus();
 
@@ -379,89 +348,11 @@ bookingForm.addEventListener("submit", async event => {
         return;
     }
 
-    const formData = new FormData(bookingForm);
-    const details = bookingTypeDetails[selectedBookingType];
-
-    const payload = {
-        booking_date: selectedDate,
-        bookingDate: selectedDate,
-        date: selectedDate,
-
-        booking_type: selectedBookingType,
-        bookingType: selectedBookingType,
-
-        accommodation: accommodation,
-        room: accommodation,
-
-        fullName: formData.get("fullName"),
-        fbName: formData.get("fbName"),
-        email: formData.get("email"),
-        phone: formData.get("phone"),
-        region: formData.get("region"),
-        province: formData.get("province"),
-        city: formData.get("city"),
-        eventType: formData.get("eventType"),
-        guests: Number(formData.get("guests")),
-        specialRequests: formData.get("specialRequests"),
-
-        status: "pending"
-    };
-
-    submitButton.disabled = true;
-    submitButton.textContent = "Submitting...";
-
-    try {
-        const response = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-            throw new Error(
-                result.message ||
-                result.error ||
-                "The booking could not be submitted. Please try again."
-            );
-        }
-
-        // Only redirect after the server accepts the booking.
-        const bookingId =
-            result.bookingId ??
-            result.booking_id ??
-            result.id ??
-            result.insertId;
-
-        const confirmationUrl = new URL(
-            "confirmation.html",
-            window.location.href
-        );
-
-        if (bookingId !== undefined && bookingId !== null) {
-            confirmationUrl.searchParams.set(
-                "bookingId",
-                String(bookingId)
-            );
-        }
-
-        window.location.href = confirmationUrl.href;
-
-    } catch (error) {
-        showStatus(
-            error.message ||
-            "Unable to connect to the booking server. Please try again.",
-            "error"
-        );
-    } finally {
-        submitButton.disabled = false;
-        submitButton.textContent = "Book";
-    }
+    window.location.href = new URL(
+        "confirmation.html",
+        window.location.href
+    ).href;
 });
 
 // Initial page setup
 renderCalendar();
-loadBookings();

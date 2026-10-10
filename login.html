@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sereno Verde | Admin Login</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #211f1d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .login-page {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            min-height: 560px;
+            height: 92vh;
+            max-height: 850px;
+            overflow: hidden;
+
+            background-image:
+                linear-gradient(
+                    rgba(91, 56, 39, 0.43),
+                    rgba(91, 56, 39, 0.43)
+                ),
+                url("https://a0.muscache.com/im/pictures/hosting/Hosting-1491758183598216742/original/c7c99381-da37-4a8e-99cb-63f89046bc1d.jpeg?im_w=1920");
+
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Small header text */
+        .top-left {
+            position: absolute;
+            top: 14px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+
+        .brand {
+            position: absolute;
+            top: 28px;
+            left: 30px;
+            color: white;
+            font-size: 15px;
+            letter-spacing: 2px;
+            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Login panel */
+        .login-card {
+            width: 100%;
+            max-width: 440px;
+            background: #e0d3d2;
+            border: 1px solid #6b4c40;
+            border-radius: 13px;
+            padding: 48px 34px 44px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #704b3b;
+        }
+
+        .logo-mark {
+            width: 62px;
+            height: 62px;
+            margin: 0 auto 12px;
+            border: 1px solid #a06a4c;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Georgia, serif;
+            font-size: 36px;
+            font-style: italic;
+        }
+
+        .logo h1 {
+            font-family: Georgia, serif;
+            font-size: 21px;
+            font-weight: normal;
+            letter-spacing: 3px;
+        }
+
+        .logo p {
+            font-size: 10px;
+            letter-spacing: 3px;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 23px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #41332e;
+            font-size: 15px;
+            margin: 0 0 7px 7px;
+        }
+
+        .form-group input {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #bd8a70;
+            border-radius: 14px;
+            background: #fffdfc;
+            padding: 0 14px;
+            font-size: 16px;
+            color: #352820;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: #965b39;
+            box-shadow: 0 0 0 3px rgba(150, 91, 57, 0.12);
+        }
+
+        .login-button {
+            width: 65%;
+            min-width: 150px;
+            height: 43px;
+            display: block;
+            margin: 35px auto 0;
+            border: none;
+            border-radius: 6px;
+            background: #985d3b;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .login-button:hover {
+            background: #7e492d;
+            transform: translateY(-1px);
+        }
+
+        .error-message {
+            display: none;
+            margin-top: 16px;
+            color: #963c36;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .login-page {
+                min-height: 570px;
+                height: calc(100vh - 20px);
+            }
+
+            .login-card {
+                max-width: 370px;
+                padding: 38px 25px;
+            }
+
+            .brand {
+                top: 20px;
+                left: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="login-page">
+
+        <div class="brand">SERENO VERDE</div>
+
+        <section class="login-card">
+            <div class="logo">
+                <div class="logo-mark">S</div>
+                <h1>SERENO VERDE</h1>
+                <p>ADMINISTRATION</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                        type="text"
+                        id="email"
+                        name="email"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+
+                <button class="login-button" type="submit">
+                    Log in
+                </button>
+
+                <p class="error-message" id="errorMessage">
+                    Incorrect email or password. Please try again.
+                </p>
+            </form>
+        </section>
+    </main>
+
+    <script>
+        const loginForm = document.getElementById("loginForm");
+        const errorMessage = document.getElementById("errorMessage");
+
+        loginForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            // Demo credentials only — replace with server-side
+            // authentication before deploying this website.
+            if (email.toLowerCase() === "admin" &&
+                password === "12345678") {
+
+                window.location.href = "admin-dashboard.html";
+            } else {
+                errorMessage.style.display = "block";
+            }
+        });
+    </script>
+</body>
+</html>
+a0.muscache.com

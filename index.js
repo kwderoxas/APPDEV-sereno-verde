@@ -6,7 +6,8 @@ const villaData = {
         description:
             "Escape the ordinary and enjoy a relaxing private-pool vacation at Tuscan Villa. Designed for comfort, privacy, and unforgettable moments, our villa is the perfect getaway for families, friends, and groups looking to unwind and enjoy quality time together.",
         location: "📍 Pililla Rizal, Philippines",
-        theme: "tuscan-theme"
+        theme: "tuscan-theme",
+        exploreUrl: "explore.html"
     },
 
     spanish: {
@@ -16,7 +17,8 @@ const villaData = {
         description:
             "Discover Spanish Villa, a peaceful private retreat where elegant design meets the beauty of nature. Enjoy a relaxing escape with family and friends in the serene surroundings of Pililla, Rizal.",
         location: "📍 Pililla Rizal, Philippines",
-        theme: "spanish-theme"
+        theme: "spanish-theme",
+        exploreUrl: "spanish.html"
     }
 };
 
@@ -31,6 +33,7 @@ const villaCopy = document.getElementById("villaCopy");
 const villaLocation = document.getElementById("villaLocation");
 const villaTitle = document.getElementById("villaTitle");
 const villaDescription = document.getElementById("villaDescription");
+const exploreButton = document.querySelector(".explore-button");
 
 const largeCard = document.getElementById("largeCard");
 const smallCard = document.getElementById("smallCard");
@@ -59,6 +62,7 @@ function renderVilla(name) {
     villaLocation.textContent = villa.location;
     villaTitle.innerHTML = villa.title;
     villaDescription.textContent = villa.description;
+    exploreButton.href = villa.exploreUrl;
 
     // The selected villa becomes the large card.
     largeCardImage.src = villa.image;

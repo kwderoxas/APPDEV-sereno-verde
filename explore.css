@@ -1,0 +1,359 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --brown: #493327;
+    --cream: #f7f2e9;
+    --gold: #c9a676;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cream);
+    color: #493327;
+    font-family: Georgia, "Times New Roman", serif;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.explore-header {
+    min-height: 84px;
+    padding: 18px 6%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    background: var(--brown);
+    color: white;
+}
+
+.brand {
+    font-size: 21px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+.nav-links a {
+    transition: color 0.25s ease;
+}
+
+.nav-links a:hover,
+.nav-links a[aria-current="page"] {
+    color: var(--gold);
+}
+
+main {
+    flex: 1;
+}
+
+.intro {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 76px 24px 48px;
+    text-align: center;
+}
+
+.eyebrow {
+    margin-bottom: 17px;
+    color: #967453;
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+.intro h1 {
+    font-size: clamp(36px, 6vw, 62px);
+    font-weight: 400;
+    line-height: 1.1;
+}
+
+.intro > p:last-child {
+    margin-top: 17px;
+    color: #786657;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.experiences {
+    width: min(1180px, 88%);
+    margin: 0 auto;
+    padding-bottom: 76px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 260px;
+    gap: 18px;
+}
+
+.experience-card {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    background: #e1d5c4;
+}
+
+.experience-card-wide {
+    grid-column: span 2;
+}
+
+.experience-card img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+}
+
+.experience-card:hover img {
+    transform: scale(1.04);
+}
+
+.experience-card::after {
+    position: absolute;
+    inset: 35% 0 0;
+    background: linear-gradient(transparent, rgba(34, 22, 15, 0.8));
+    content: "";
+    pointer-events: none;
+}
+
+.experience-card figcaption {
+    position: absolute;
+    z-index: 1;
+    right: 20px;
+    bottom: 20px;
+    left: 20px;
+    display: grid;
+    gap: 7px;
+    color: white;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+.experience-card figcaption span:first-child {
+    font-size: 23px;
+}
+
+.experience-card figcaption span:last-child {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.booking-callout {
+    padding: 34px 6%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    background: #eee4d5;
+    text-align: center;
+}
+
+.booking-callout p {
+    font-size: 21px;
+}
+
+.booking-callout a {
+    padding: 14px 20px;
+    border: 1px solid var(--brown);
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: background 0.25s ease, color 0.25s ease;
+}
+
+.booking-callout a:hover {
+    background: var(--brown);
+    color: white;
+}
+
+.site-footer {
+    padding: 48px 6% 22px;
+    background: var(--brown);
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+.footer-main {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 38px;
+}
+
+.footer-about {
+    flex: 1 1 340px;
+    max-width: 510px;
+}
+
+.footer-about h2,
+.footer-booking h2 {
+    margin-bottom: 14px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 24px;
+    font-weight: 400;
+}
+
+.footer-about p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.footer-contact {
+    display: grid;
+    gap: 14px;
+    font-size: 13px;
+    font-style: normal;
+}
+
+.footer-contact a,
+.footer-contact p {
+    display: grid;
+    gap: 5px;
+}
+
+.footer-contact a:hover {
+    color: var(--gold);
+}
+
+.footer-contact span {
+    color: var(--gold);
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+.footer-booking {
+    flex: 0 1 190px;
+}
+
+.availability-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    transition: background 0.25s ease, color 0.25s ease;
+}
+
+.availability-button:hover {
+    background: white;
+    color: var(--brown);
+}
+
+.footer-bottom {
+    max-width: 1180px;
+    margin: 38px auto 0;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 10px;
+    letter-spacing: 0.8px;
+}
+
+.site-footer a:hover {
+    color: var(--gold);
+}
+
+@media (max-width: 760px) {
+    .experiences {
+        width: min(100% - 36px, 620px);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-auto-rows: 230px;
+        gap: 12px;
+    }
+
+    .experience-card-wide {
+        grid-column: span 2;
+    }
+
+    .intro {
+        padding-top: 58px;
+    }
+}
+
+@media (max-width: 520px) {
+    .explore-header {
+        min-height: 70px;
+        padding: 16px 5%;
+        align-items: flex-start;
+    }
+
+    .brand {
+        font-size: 16px;
+    }
+
+    .nav-links {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        font-size: 9px;
+    }
+
+    .experiences {
+        grid-template-columns: 1fr;
+        grid-auto-rows: 250px;
+    }
+
+    .experience-card-wide {
+        grid-column: auto;
+    }
+
+    .site-footer {
+        flex-direction: column;
+        padding: 38px 7% 20px;
+    }
+
+    .footer-main {
+        flex-direction: column;
+        gap: 28px;
+    }
+
+    .footer-booking {
+        flex-basis: auto;
+    }
+
+    .footer-bottom {
+        margin-top: 30px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

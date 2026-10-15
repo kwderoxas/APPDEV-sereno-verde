@@ -124,6 +124,46 @@
             </figure>
         </section>
 
+        <section class="reviews-section" id="reviews" data-villa-reviews="tuscan" aria-labelledby="reviews-heading">
+            <div class="reviews-heading">
+                <p class="eyebrow">Guest experiences</p>
+                <h2 id="reviews-heading">Tuscan Villa ratings &amp; feedback</h2>
+                <p class="reviews-summary" data-reviews-summary aria-live="polite"></p>
+            </div>
+            <form class="review-form" data-review-form>
+                <h3>Share your experience</h3>
+                <div class="review-form-fields">
+                    <label>
+                        Your name
+                        <input name="name" type="text" maxlength="60" autocomplete="name" required>
+                    </label>
+                    <label>
+                        Your rating
+                        <select name="rating" required>
+                            <option value="">Choose a rating</option>
+                            <option value="5">5 — Excellent</option>
+                            <option value="4">4 — Great</option>
+                            <option value="3">3 — Good</option>
+                            <option value="2">2 — Fair</option>
+                            <option value="1">1 — Poor</option>
+                        </select>
+                    </label>
+                    <label>
+                        Email (optional, to match your guest record)
+                        <input name="email" type="email" maxlength="254" autocomplete="email">
+                    </label>
+                    <label class="review-feedback-field">
+                        Your feedback
+                        <textarea name="feedback" rows="4" maxlength="1000" required></textarea>
+                    </label>
+                </div>
+                <button class="review-submit" type="submit">Post your review</button>
+                <p class="review-storage-note">Reviews you add are saved to the guest feedback database.</p>
+                <p class="review-form-message" data-review-message role="status" aria-live="polite"></p>
+            </form>
+            <div class="reviews-list" data-reviews-list aria-live="polite"></div>
+        </section>
+
         <section class="booking-callout">
             <p>Ready to make a day of it?</p>
             <a href="booking.html">Plan your stay <span aria-hidden="true">↗</span></a>
@@ -153,5 +193,6 @@
             <span>Pililla, Rizal, Philippines</span>
         </div>
     </footer>
+    <script src="reviews.js" defer></script>
 </body>
 </html>

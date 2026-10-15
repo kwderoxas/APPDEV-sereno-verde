@@ -6,6 +6,7 @@ const bookingForm = document.getElementById("bookingForm");
 const statusMessage = document.getElementById("statusMessage");
 const bookingSummary = document.getElementById("bookingSummary");
 const summaryText = document.getElementById("summaryText");
+const submitButton = document.getElementById("submitButton");
 
 let currentDate = new Date(2026, 9, 1);
 let selectedDate = null;
@@ -303,8 +304,8 @@ document.getElementById("accommodation").addEventListener("change", () => {
     clearStatus();
 });
 
-// Submit booking details and redirect to the confirmation page.
-bookingForm.addEventListener("submit", event => {
+// Submit booking details to the server and redirect after a confirmed save.
+bookingForm.addEventListener("submit", async event => {
     event.preventDefault();
     clearStatus();
 
@@ -348,11 +349,42 @@ bookingForm.addEventListener("submit", event => {
         return;
     }
 
-    window.location.href = new URL(
-        "confirmation.html",
-        window.location.href
-    ).href;
+    submitButton.disabled = true;
+    submitButton.textContent = "Submitting...";
+
+    try {
+        const formData = new FormData(bookingForm);
+        const response = await fetch("/api/bookings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ...Object.fromEntries(formData.entries()),
+                bookingDate: selectedDate,
+                bookingType: selectedBookingType
+            })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Your booking could not be submitted.");
+        window.location.href = new URL("confirmation.html?booking=" + encodeURIComponent(result.id), window.location.href).href;
+    } catch (error) {
+        showStatus(error.message || "The booking service is unavailable. Please try again.", "error");
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Book";
+    }
 });
 
 // Initial page setup
 renderCalendar();
+
+fetch("/api/availability")
+    .then(async response => {
+        if (!response.ok) throw new Error("Could not load availability from the server.");
+        const result = await response.json();
+        bookings = Array.isArray(result.bookings) ? result.bookings : [];
+        renderCalendar();
+    })
+    .catch(error => {
+        console.error("Could not load booking availability:", error);
+        showStatus("Live availability could not be loaded. Please refresh before booking.", "error");
+    });

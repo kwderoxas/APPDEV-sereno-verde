@@ -43,10 +43,6 @@
             <span class="nav-badge" id="pendingBadge">0</span>
         </button>
 
-        <button class="nav-item" data-page="booking-management">
-            <span class="nav-icon">▣</span> Booking Management
-        </button>
-
         <button class="nav-item" data-page="calendar">
             <span class="nav-icon">▦</span> Reservation Calendar
         </button>
@@ -80,10 +76,13 @@
         <div class="admin-profile">
             <div class="avatar">AD</div>
             <div>
-                <div class="profile-name">Administrator</div>
+                <div class="profile-name" id="profileName">Administrator</div>
                 <div class="profile-role">Dashboard access</div>
             </div>
         </div>
+        <button class="nav-item logout-button" id="logoutButton" type="button">
+            <span class="nav-icon">↪</span> Log out
+        </button>
     </div>
 
 </aside>
@@ -214,9 +213,9 @@
                 </article>
 
                 <article class="quick-card blue">
-                    <h3>Manage Reservations</h3>
-                    <p>Review booking records and update their status after checking availability and guest details.</p>
-                    <button class="btn btn-primary" data-go-page="booking-management">Manage reservations →</button>
+                    <h3>Guest Directory</h3>
+                    <p>Search guests and see how many bookings they have made.</p>
+                    <button class="btn btn-primary" data-go-page="guests">Search guests →</button>
                 </article>
             </div>
 
@@ -226,7 +225,7 @@
                         <h2>Recent Booking Activity</h2>
                         <p>The most recently created records available from the backend</p>
                     </div>
-                    <button class="btn" data-go-page="booking-management">View all</button>
+                    <button class="btn" data-go-page="new-bookings">View bookings</button>
                 </div>
                 <div id="recentBookings"></div>
             </article>
@@ -265,49 +264,6 @@
 
             <h2 class="booking-month-title" id="bookingMonthHeading">Bookings</h2>
             <div class="booking-date-grid" id="bookingDateGrid"></div>
-
-        </section>
-
-        <!-- BOOKING MANAGEMENT -->
-        <section class="page-section" id="page-booking-management">
-
-            <div class="page-heading">
-                <div>
-                    <div class="eyebrow">Reservations and status</div>
-                    <h1>Booking Management</h1>
-                    <p>Review guest reservations and maintain booking status.</p>
-                </div>
-                <div class="heading-actions">
-                    <button class="btn" id="refreshManagement">↻ Refresh</button>
-                    <button class="btn btn-primary" id="managementAddButton">＋ Add booking</button>
-                </div>
-            </div>
-
-            <div class="toolbar">
-                <div class="toolbar-left">
-                    <select class="control" id="managementStatusFilter">
-                        <option value="all">All statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-
-                    <select class="control" id="managementTypeFilter">
-                        <option value="all">All stay types</option>
-                        <option value="daycation">Daycation</option>
-                        <option value="nightcation">Nightcation</option>
-                        <option value="22hours">22 Hours stay</option>
-                    </select>
-                </div>
-
-                <input class="control" id="managementSearch"
-                    type="search" placeholder="Search bookings...">
-            </div>
-
-            <article class="panel">
-                <div class="table-wrap" id="managementTable"></div>
-            </article>
 
         </section>
 
@@ -430,7 +386,7 @@
                 <div>
                     <div class="eyebrow">Guest directory</div>
                     <h1>Guest Management</h1>
-                    <p>Guest information is gathered from available booking records.</p>
+                    <p>Search guest profiles and view booking history stored in the database.</p>
                 </div>
                 <button class="btn" id="refreshGuests">↻ Refresh</button>
             </div>
@@ -470,10 +426,6 @@
                 </div>
             </div>
 
-            <div class="info-box">
-                Feedback cards will appear here once the system is connected to a reviews table or feedback API. The existing booking records do not automatically contain review text or ratings.
-            </div>
-
             <article class="panel">
                 <div class="panel-heading">
                     <div>
@@ -494,53 +446,61 @@
                 <div>
                     <div class="eyebrow">Workspace preferences</div>
                     <h1>Settings</h1>
-                    <p>Configure basic dashboard display preferences.</p>
+                    <p>Customize the dashboard and update your admin login.</p>
                 </div>
             </div>
 
             <article class="panel settings-form">
                 <div class="panel-heading">
                     <div>
-                        <h2>Resort Information</h2>
-                        <p>These details are currently saved in this browser only.</p>
+                        <h2>Admin Page Color</h2>
+                        <p>Choose the admin dashboard's accent and sidebar color.</p>
                     </div>
                 </div>
 
-                <div class="info-box">
-                    These settings do not update the backend database or change the public website. Server-side settings can be added later.
+                <form id="themeForm">
+                    <div class="field">
+                        <label for="themeColor">Dashboard color</label>
+                        <input id="themeColor" type="color" value="#a9856d" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save color</button>
+                </form>
+            </article>
+
+            <article class="panel settings-form">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Admin Login</h2>
+                        <p>Update the username and password used to sign in.</p>
+                    </div>
                 </div>
 
-                <form id="settingsForm">
+                <form id="credentialsForm">
                     <div class="field">
-                        <label for="settingResortName">Resort name</label>
-                        <input id="settingResortName" value="Sereno Verde" required>
+                        <label for="currentPassword">Current password</label>
+                        <input id="currentPassword" type="password" autocomplete="current-password" required>
                     </div>
-
                     <div class="field">
-                        <label for="settingLocation">Resort location</label>
-                        <input id="settingLocation" value="Pililla, Rizal, Philippines">
+                        <label for="newUsername">New username</label>
+                        <input id="newUsername" autocomplete="username" minlength="3" maxlength="80" required>
                     </div>
-
                     <div class="field">
-                        <label for="settingAdminName">Display administrator name</label>
-                        <input id="settingAdminName" value="Administrator">
+                        <label for="newPassword">New password (12 characters minimum)</label>
+                        <input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="72" required>
                     </div>
-
                     <div class="field">
-                        <label for="settingTimezone">Display timezone</label>
-                        <select id="settingTimezone">
-                            <option value="Asia/Manila" selected>Philippine Time (Asia/Manila)</option>
-                        </select>
+                        <label for="confirmNewPassword">Confirm new password</label>
+                        <input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="12" maxlength="72" required>
                     </div>
-
-                    <button type="submit" class="btn btn-primary">Save display settings</button>
+                    <button type="submit" class="btn btn-primary">Update login</button>
+                    <p class="settings-message" id="credentialsMessage" role="status" aria-live="polite"></p>
                 </form>
             </article>
 
         </section>
 
         <div class="footer-note">
-            Sereno Verde Admin Workspace · Booking information depends on records available from the server.
+            Sereno Verde Admin Workspace · Bookings, guests, and reviews are stored in MySQL.
         </div>
 
     </main>
@@ -592,6 +552,7 @@
                     <option value="confirmed">Confirmed</option>
                     <option value="cancelled">Cancelled</option>
                     <option value="rejected">Rejected</option>
+                    <option value="blocked">Blocked</option>
                 </select>
             </div>
 
@@ -601,7 +562,7 @@
             </div>
 
             <div class="info-box">
-                Saving changes requires a compatible update endpoint in your Express backend. If it is not available, the dashboard will tell you rather than pretending the change was saved.
+                Booking changes are saved to the MySQL database.
             </div>
 
             <div class="modal-actions">

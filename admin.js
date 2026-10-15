@@ -145,14 +145,6 @@ function getMonthBookings(year, monthIndex) {
     return allBookings.filter(booking => bookingDate(booking).startsWith(prefix));
 }
 
-function sortByDate(records) {
-    return [...records].sort((a, b) => {
-        const dateCompare = bookingDate(a).localeCompare(bookingDate(b));
-        if (dateCompare !== 0) return dateCompare;
-        return String(guestName(a)).localeCompare(String(guestName(b)));
-    });
-}
-
 function getStayLabel(type) {
     if (type.includes("day")) return "Daycation";
     if (type.includes("night")) return "Nightcation";
@@ -164,7 +156,6 @@ function getStayLabel(type) {
 const pageTitles = {
     overview: "Overview",
     "new-bookings": "New Bookings",
-    "booking-management": "Booking Management",
     calendar: "Reservation Calendar",
     accommodations: "Accommodations",
     guests: "Guest Management",
@@ -190,7 +181,6 @@ function navigateToPage(page) {
     document.getElementById("sidebar").classList.remove("open");
 
     if (page === "new-bookings") renderNewBookings();
-    if (page === "booking-management") renderManagementTable();
     if (page === "calendar") renderAdminCalendar();
     if (page === "guests") renderGuests();
     if (page === "reviews") renderReviews();
@@ -241,7 +231,6 @@ async function loadBookings() {
         updateOverview();
         populateMonthFilters();
         renderNewBookings();
-        renderManagementTable();
         renderAdminCalendar();
         renderGuests();
         renderReviews();
@@ -253,7 +242,6 @@ async function loadBookings() {
         updateOverview();
         populateMonthFilters();
         renderNewBookings();
-        renderManagementTable();
         renderAdminCalendar();
         renderGuests();
         renderReviews();
@@ -428,12 +416,12 @@ function renderRecentBookings() {
         return;
     }
 
-    container.innerHTML = renderBookingTable(recent, false);
+    container.innerHTML = renderBookingTable(recent);
 }
 
 /* Booking table */
 
-function renderBookingTable(records, showActions = true) {
+function renderBookingTable(records) {
     if (!records.length) {
         return '<div class="empty-table">No bookings match your filters.</div>';
     }
@@ -459,12 +447,6 @@ function renderBookingTable(records, showActions = true) {
                 <td>${escapeHTML(accommodationName(booking))}</td>
                 <td>${escapeHTML(getStayLabel(stayType(booking)))}</td>
                 <td><span class="status-pill ${status}">${escapeHTML(status)}</span></td>
-                ${showActions ? `
-                    <td>
-                        <div class="row-actions">
-                            <button class="row-action" data-edit-booking="${escapeHTML(id)}">View / Edit</button>
-                        </div>
-                    </td>` : ""}
             </tr>
         `;
     }).join("");
@@ -479,40 +461,11 @@ function renderBookingTable(records, showActions = true) {
                     <th>ACCOMMODATION</th>
                     <th>STAY TYPE</th>
                     <th>STATUS</th>
-                    ${showActions ? "<th>ACTIONS</th>" : ""}
                 </tr>
             </thead>
             <tbody>${rows}</tbody>
         </table>
     `;
-}
-
-function renderManagementTable() {
-    const container = document.getElementById("managementTable");
-    const statusFilter = document.getElementById("managementStatusFilter").value;
-    const typeFilter = document.getElementById("managementTypeFilter").value;
-    const query = document.getElementById("managementSearch").value.toLowerCase().trim();
-
-    const filtered = sortByDate(allBookings.filter(booking => {
-        const status = normalizedStatus(bookingStatus(booking));
-        const type = stayType(booking);
-
-        const matchesStatus = statusFilter === "all" || status === statusFilter;
-        const matchesType = typeFilter === "all" || type.includes(typeFilter);
-
-        const searchable = [
-            bookingId(booking),
-            guestName(booking),
-            guestEmail(booking),
-            guestPhone(booking),
-            accommodationName(booking),
-            bookingDate(booking)
-        ].join(" ").toLowerCase();
-
-        return matchesStatus && matchesType && searchable.includes(query);
-    }));
-
-    container.innerHTML = renderBookingTable(filtered, true);
 }
 
 /* Month filter and date cards */
@@ -591,6 +544,7 @@ function renderGuestEntry(booking) {
                 Guests: ${escapeHTML(guestCount(booking))}
             </div>
             <span class="entry-status">${escapeHTML(status)}</span>
+            <button type="button" class="text-button" data-edit-booking="${escapeHTML(bookingId(booking))}">View / edit</button>
         </div>
     `;
 }
@@ -825,82 +779,46 @@ document.getElementById("calendarAccommodationFilter").addEventListener("change"
 /* Guests */
 
 function renderGuests() {
-    const unique = new Map();
-
-    allBookings.forEach(booking => {
-        const email = guestEmail(booking).trim().toLowerCase();
-        const name = guestName(booking).trim().toLowerCase();
-        const key = email || name;
-
-        if (key && key !== "guest name unavailable") {
-            if (!unique.has(key)) unique.set(key, booking);
-        }
-    });
-
-    const guests = [...unique.values()];
-
-    document.getElementById("uniqueGuests").textContent = guests.length;
-    document.getElementById("guestsWithEmail").textContent =
-        guests.filter(guest => guestEmail(guest)).length;
-
-    const query = document.getElementById("guestSearch").value.toLowerCase().trim();
-
-    const filtered = guests.filter(guest => [
-        guestName(guest),
-        guestEmail(guest),
-        guestPhone(guest)
-    ].join(" ").toLowerCase().includes(query));
-
     const container = document.getElementById("guestTable");
+    fetch("/api/guests")
+        .then(async response => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "Guest records could not be loaded.");
+            const guests = Array.isArray(result.guests) ? result.guests : [];
+            document.getElementById("uniqueGuests").textContent = guests.length;
+            document.getElementById("guestsWithEmail").textContent = guests.filter(guest => guest.email).length;
 
-    if (!filtered.length) {
-        setEmpty(container, "No guest records match your search.");
-        return;
-    }
+            const query = document.getElementById("guestSearch").value.toLowerCase().trim();
+            const filtered = guests.filter(guest => [
+                guest.fullName, guest.fbName, guest.email, guest.phone,
+                guest.region, guest.province, guest.city
+            ].join(" ").toLowerCase().includes(query));
 
-    container.innerHTML = `
-        <table>
-            <thead>
-                <tr>
-                    <th>GUEST</th>
-                    <th>PHONE</th>
-                    <th>EMAIL</th>
-                    <th>BOOKINGS</th>
-                    <th>LATEST DATE</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${filtered.map(guest => {
-                    const email = guestEmail(guest).trim().toLowerCase();
-                    const name = guestName(guest).trim().toLowerCase();
+            if (!filtered.length) {
+                setEmpty(container, "No guest records match your search.");
+                return;
+            }
 
-                    const guestBookings = allBookings.filter(booking => {
-                        if (email) return guestEmail(booking).trim().toLowerCase() === email;
-                        return guestName(booking).trim().toLowerCase() === name;
-                    });
-
-                    const latest = [...guestBookings].sort((a, b) =>
-                        bookingDate(b).localeCompare(bookingDate(a))
-                    )[0];
-
-                    return `
+            container.innerHTML = `
+                <table>
+                    <thead><tr><th>GUEST</th><th>PHONE</th><th>EMAIL</th><th>BOOKINGS</th><th>LATEST DATE</th></tr></thead>
+                    <tbody>${filtered.map(guest => `
                         <tr>
-                            <td>
-                                <div class="guest-cell">
-                                    <span class="small-avatar">${escapeHTML(initials(guestName(guest)))}</span>
-                                    <strong>${escapeHTML(guestName(guest))}</strong>
-                                </div>
-                            </td>
-                            <td>${escapeHTML(guestPhone(guest) || "—")}</td>
-                            <td>${escapeHTML(guestEmail(guest) || "—")}</td>
-                            <td>${guestBookings.length}</td>
-                            <td>${escapeHTML(readableDate(latest ? bookingDate(latest) : ""))}</td>
-                        </tr>
-                    `;
-                }).join("")}
-            </tbody>
-        </table>
-    `;
+                            <td><div class="guest-cell"><span class="small-avatar">${escapeHTML(initials(guest.fullName))}</span>
+                                <span><strong>${escapeHTML(guest.fullName)}</strong><small>${escapeHTML(guest.city)}, ${escapeHTML(guest.province)}</small></span>
+                            </div></td>
+                            <td>${escapeHTML(guest.phone || "—")}</td>
+                            <td>${escapeHTML(guest.email || "—")}</td>
+                            <td>${escapeHTML(guest.bookingCount)}</td>
+                            <td>${escapeHTML(readableDate(guest.latestBookingDate ? String(guest.latestBookingDate).slice(0, 10) : ""))}</td>
+                        </tr>`).join("")}
+                    </tbody>
+                </table>`;
+        })
+        .catch(error => {
+            console.error("Could not load guest records:", error);
+            setEmpty(container, error.message);
+        });
 }
 
 document.getElementById("guestSearch").addEventListener("input", renderGuests);
@@ -913,14 +831,9 @@ async function renderReviews() {
     try {
         const response = await fetch("/api/feedback");
 
-        if (!response.ok) throw new Error("Feedback endpoint unavailable");
-
         const data = await response.json();
-        feedbackRecords = Array.isArray(data)
-            ? data
-            : Array.isArray(data.feedback)
-                ? data.feedback
-                : [];
+        if (!response.ok) throw new Error(data.error || "Feedback could not be loaded.");
+        feedbackRecords = Array.isArray(data.reviews) ? data.reviews : [];
 
         if (!feedbackRecords.length) {
             setEmpty(container, "No feedback records have been submitted yet.");
@@ -931,18 +844,20 @@ async function renderReviews() {
             const name = fieldValue(review, ["guestName", "guest_name", "name"], "Guest");
             const comment = fieldValue(review, ["comment", "feedback", "message", "review"], "No comment provided.");
             const rating = Math.max(0, Math.min(5, Number(fieldValue(review, ["rating", "stars"], 0))));
+            const villa = fieldValue(review, ["villa"], "Villa");
 
             return `
                 <article class="review-card">
                     <div class="review-stars">${"★".repeat(rating)}${"☆".repeat(5-rating)}</div>
                     <p>${escapeHTML(comment)}</p>
-                    <small>${escapeHTML(name)}</small>
+                    <small>${escapeHTML(name)} · ${escapeHTML(villa === "tuscan" ? "Tuscan Villa" : "Spanish Villa")}</small>
                 </article>
             `;
         }).join("");
 
-    } catch {
-        setEmpty(container, "No feedback API is connected yet. Add a reviews endpoint to display guest feedback here.");
+    } catch (error) {
+        console.error("Could not load guest feedback:", error);
+        setEmpty(container, error.message);
     }
 }
 
@@ -1040,15 +955,14 @@ document.getElementById("bookingEditForm").addEventListener("submit", async even
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-            throw new Error("The backend does not confirm that this booking was updated.");
-        }
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "The booking update could not be saved.");
 
         closeBookingModal();
         await loadBookings();
         showToast("Booking updated.");
     } catch (error) {
-        showToast(error.message + " Add a compatible PUT /api/bookings/:id route first.");
+        showToast(error.message);
     }
 });
 
@@ -1059,14 +973,13 @@ function openAddBookingPage() {
 }
 
 document.getElementById("newBookingButton").addEventListener("click", openAddBookingPage);
-document.getElementById("managementAddButton").addEventListener("click", openAddBookingPage);
 
 document.querySelectorAll("[data-accommodation-search]").forEach(button => {
     button.addEventListener("click", () => {
         const name = button.dataset.accommodationSearch;
-        navigateToPage("booking-management");
-        document.getElementById("managementSearch").value = name;
-        renderManagementTable();
+        navigateToPage("new-bookings");
+        document.getElementById("bookingSearch").value = name;
+        renderNewBookings();
     });
 });
 
@@ -1074,39 +987,108 @@ document.querySelectorAll("[data-accommodation-search]").forEach(button => {
 
 document.getElementById("refreshOverview").addEventListener("click", loadBookings);
 document.getElementById("refreshNewBookings").addEventListener("click", loadBookings);
-document.getElementById("refreshManagement").addEventListener("click", loadBookings);
 document.getElementById("calendarRefresh").addEventListener("click", loadBookings);
 document.getElementById("refreshGuests").addEventListener("click", loadBookings);
 document.getElementById("refreshReviews").addEventListener("click", renderReviews);
 
-document.getElementById("managementStatusFilter").addEventListener("change", renderManagementTable);
-document.getElementById("managementTypeFilter").addEventListener("change", renderManagementTable);
-document.getElementById("managementSearch").addEventListener("input", renderManagementTable);
-
-/* Local display preferences only */
-
-document.getElementById("settingsForm").addEventListener("submit", event => {
+document.getElementById("themeForm").addEventListener("submit", async event => {
     event.preventDefault();
-
-    showToast("Display settings saved for this page session. Backend settings are not configured.");
+    const themeColor = document.getElementById("themeColor").value;
+    try {
+        const response = await fetch("/api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ themeColor })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Theme color could not be saved.");
+        applyThemeColor(result.themeColor);
+        showToast("Admin page color saved.");
+    } catch (error) {
+        showToast(error.message);
+    }
 });
 
-/* Initial setup */
+document.getElementById("credentialsForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const message = document.getElementById("credentialsMessage");
+    const newPassword = document.getElementById("newPassword").value;
+    if (newPassword !== document.getElementById("confirmNewPassword").value) {
+        message.textContent = "New passwords do not match.";
+        message.dataset.error = "true";
+        return;
+    }
 
-document.getElementById("todayLabel").textContent =
-    new Date().toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        year: "numeric"
-    });
+    try {
+        const response = await fetch("/api/auth/credentials", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                currentPassword: document.getElementById("currentPassword").value,
+                username: document.getElementById("newUsername").value.trim(),
+                newPassword
+            })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Login credentials could not be updated.");
+        document.getElementById("profileName").textContent = result.username;
+        document.getElementById("credentialsForm").reset();
+        document.getElementById("newUsername").value = result.username;
+        message.textContent = "Login username and password updated.";
+        message.dataset.error = "false";
+    } catch (error) {
+        message.textContent = error.message;
+        message.dataset.error = "true";
+    }
+});
 
-populateMonthFilters();
-renderMonthlyChart();
-renderYearlyChart();
-renderNewBookings();
-renderManagementTable();
-renderAdminCalendar();
-renderGuests();
-renderReviews();
-loadBookings();
+document.getElementById("logoutButton").addEventListener("click", async () => {
+    try {
+        const response = await fetch("/api/auth/logout", { method: "POST" });
+        if (!response.ok) throw new Error("You could not be logged out. Please retry.");
+        window.location.replace("/login.html");
+    } catch (error) {
+        showToast(error.message);
+    }
+});
+
+function applyThemeColor(color) {
+    document.documentElement.style.setProperty("--theme-color", color);
+    document.getElementById("themeColor").value = color;
+}
+
+async function initializeAdmin() {
+    const response = await fetch("/api/auth/session");
+    if (!response.ok) {
+        window.location.replace("/login.html");
+        return;
+    }
+    const sessionData = await response.json();
+    document.getElementById("profileName").textContent = sessionData.username;
+    document.getElementById("newUsername").value = sessionData.username;
+
+    const settingsResponse = await fetch("/api/settings");
+    const settings = await settingsResponse.json();
+    if (!settingsResponse.ok) throw new Error(settings.error || "Admin settings could not be loaded.");
+    applyThemeColor(settings.themeColor);
+
+    document.getElementById("todayLabel").textContent =
+        new Date().toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            year: "numeric"
+        });
+
+    populateMonthFilters();
+    renderMonthlyChart();
+    renderYearlyChart();
+    renderNewBookings();
+    renderAdminCalendar();
+    loadBookings();
+}
+
+initializeAdmin().catch(error => {
+    console.error("Could not initialize admin dashboard:", error);
+    showToast(error.message || "The admin dashboard could not be loaded.");
+});

@@ -1,12 +1,13 @@
 :root {
-    --brown: #a9856d;
-    --brown-dark: #80624f;
-    --brown-light: #f2e7dc;
-    --brown-pale: #faf5f0;
-    --blue: #839db5;
-    --blue-dark: #526e89;
-    --blue-light: #e6edf4;
-    --blue-pale: #f3f6fa;
+    --theme-color: #a9856d;
+    --brown: var(--theme-color);
+    --brown-dark: color-mix(in srgb, var(--theme-color) 78%, #000000);
+    --brown-light: color-mix(in srgb, var(--theme-color) 18%, #ffffff);
+    --brown-pale: color-mix(in srgb, var(--theme-color) 6%, #ffffff);
+    --blue: var(--theme-color);
+    --blue-dark: color-mix(in srgb, var(--theme-color) 78%, #000000);
+    --blue-light: color-mix(in srgb, var(--theme-color) 15%, #ffffff);
+    --blue-pale: color-mix(in srgb, var(--theme-color) 5%, #ffffff);
     --green: #8cae91;
     --green-light: #e8f1e7;
     --red: #bd7774;
@@ -65,8 +66,8 @@ textarea:focus-visible {
     left: 0;
     bottom: 0;
     width: var(--sidebar-width);
-    background: #f2e9df;
-    border-right: 1px solid #e6d9ce;
+    background: color-mix(in srgb, var(--theme-color) 12%, #ffffff);
+    border-right: 1px solid color-mix(in srgb, var(--theme-color) 24%, #ffffff);
     padding: 25px 17px;
     display: flex;
     flex-direction: column;
@@ -205,6 +206,20 @@ textarea:focus-visible {
     color: var(--muted);
     font-size: 10px;
     margin-top: 4px;
+}
+
+.logout-button {
+    margin-top: 8px;
+}
+
+.settings-message {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.settings-message[data-error="true"] {
+    color: var(--red);
 }
 
 /* MAIN AREA */

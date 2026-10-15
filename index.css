@@ -456,6 +456,17 @@ button {
     letter-spacing: 1px;
 }
 
+.footer-reviews-link {
+    padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,0.7);
+    transition: background 0.25s ease, color 0.25s ease;
+}
+
+.footer-reviews-link:hover {
+    background: white;
+    color: #24382c;
+}
+
 /* TABLET */
 
 @media (max-width: 900px) {

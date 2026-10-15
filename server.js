@@ -10,6 +10,7 @@ const mysql = require("mysql2/promise");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
+app.set("trust proxy", 1);
 const databaseConfig = {
     host: process.env.DB_HOST || "127.0.0.1",
     port: Number(process.env.DB_PORT || 3306),
@@ -20,7 +21,7 @@ const databaseConfig = {
 
 for (const name of ["DB_USER", "DB_PASSWORD", "SESSION_SECRET"]) {
     if (!process.env[name]) {
-        console.error(`Missing ${name}. Copy .env.example to .env and set the local configuration.`);
+        console.error(`Missing ${name}. Set it in the deployment environment or local .env file.`);
         process.exit(1);
     }
 }
@@ -40,7 +41,7 @@ if (process.env.SESSION_SECRET.length < 32) {
     process.exit(1);
 }
 if (process.env.SESSION_SECRET.includes("replace-with")) {
-    console.error("Replace the example SESSION_SECRET value in .env.");
+    console.error("Replace the example SESSION_SECRET value with a private value.");
     process.exit(1);
 }
 
@@ -107,12 +108,11 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://*.onrender.com"], // ◄ Added to allow Render traffic
+            connectSrc: ["'self'"],
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
         }
-    },
-    crossOriginEmbedderPolicy: false // ◄ Added to make sure images load smoothly
+    }
 }));
 app.use(express.json({ limit: "20kb" }));
 app.use(session({
@@ -243,6 +243,11 @@ app.get("/api/auth/session", (req, res) => {
     if (!req.session.admin) return res.status(401).json({ error: "Administrator login required." });
     res.json({ username: req.session.admin.username });
 });
+
+app.get("/api/health", asyncRoute(async (req, res) => {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok" });
+}));
 
 app.post("/api/auth/logout", requireAdmin, asyncRoute(async (req, res) => {
     await new Promise((resolve, reject) => req.session.destroy(error => error ? reject(error) : resolve()));
@@ -442,14 +447,38 @@ app.get("/admin.html", (req, res) => {
     res.sendFile(path.join(__dirname, "admin.html"));
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+const blockedStaticPaths = new Set([
+    "/.gitignore",
+    "/README.md",
+    "/package.json",
+    "/package-lock.json",
+    "/server.js",
+    "/server",
+    "/database",
+    "/node_modules"
+]);
 
-// 2. Clearer fallback pathing to prevent Express router crashes
 app.use((req, res, next) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
+    const pathname = decodeURIComponent(req.path).replace(/\\/g, "/").toLowerCase();
+    if ([...blockedStaticPaths].some(blocked =>
+        pathname === blocked || pathname.startsWith(blocked + "/")
+    )) {
+        return res.sendStatus(404);
+    }
+    next();
 });
 
-// 3. Error handler
+app.use(express.static(__dirname, {
+    dotfiles: "deny",
+    index: "index.html",
+    fallthrough: true
+}));
+
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Error handler
 app.use((error, req, res, next) => {
     console.error("Request failed:", error);
     if (res.headersSent) return next(error);
@@ -457,10 +486,10 @@ app.use((error, req, res, next) => {
     res.status(status).json({ error: status === 500 ? "The server could not complete the request." : error.message });
 });
 
-// 4. Start the server
+// Start the server
 async function start() {
     await pool.query("SELECT 1");
-    app.listen(port, () => {
+    app.listen(port, "0.0.0.0", () => {
         console.log(`Sereno Verde is live and listening on port ${port}`);
     });
 }

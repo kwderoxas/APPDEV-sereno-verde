@@ -107,12 +107,12 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'"],
+            connectSrc: ["'self'", "https://*.onrender.com"], // ◄ Added to allow Render traffic
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
-            upgradeInsecureRequests: null
         }
-    }
+    },
+    crossOriginEmbedderPolicy: false // ◄ Added to make sure images load smoothly
 }));
 app.use(express.json({ limit: "20kb" }));
 app.use(session({
@@ -442,8 +442,14 @@ app.get("/admin.html", (req, res) => {
     res.sendFile(path.join(__dirname, "admin.html"));
 });
 
-app.use(express.static(__dirname, { index: "index.html", dotfiles: "ignore" }));
+app.use(express.static(path.join(__dirname, "public")));
 
+// 2. Add a fallback route so refreshing your web pages doesn't give a 404 error
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// 3. Error handler
 app.use((error, req, res, next) => {
     console.error("Request failed:", error);
     if (res.headersSent) return next(error);
@@ -451,10 +457,11 @@ app.use((error, req, res, next) => {
     res.status(status).json({ error: status === 500 ? "The server could not complete the request." : error.message });
 });
 
+// 4. Start the server (Removed "127.0.0.1" so Render can open it to the public internet)
 async function start() {
     await pool.query("SELECT 1");
-    app.listen(port, "127.0.0.1", () => {
-        console.log(`Sereno Verde is available at http://127.0.0.1:${port}`);
+    app.listen(port, () => {
+        console.log(`Sereno Verde is live and listening on port ${port}`);
     });
 }
 

@@ -444,8 +444,8 @@ app.get("/admin.html", (req, res) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 
-// 2. Add a fallback route so refreshing your web pages doesn't give a 404 error
-app.get("*", (req, res) => {
+// 2. Clearer fallback pathing to prevent Express router crashes
+app.use((req, res, next) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -457,7 +457,7 @@ app.use((error, req, res, next) => {
     res.status(status).json({ error: status === 500 ? "The server could not complete the request." : error.message });
 });
 
-// 4. Start the server (Removed "127.0.0.1" so Render can open it to the public internet)
+// 4. Start the server
 async function start() {
     await pool.query("SELECT 1");
     app.listen(port, () => {

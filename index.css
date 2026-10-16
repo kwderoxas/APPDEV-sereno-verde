@@ -102,16 +102,10 @@ button {
 .brand-logo {
     width: 43px;
     height: 43px;
-    border: 1px solid rgba(255,255,255,0.8);
-    border-radius: 3px;
-    display: grid;
-    place-items: center;
-    background: rgba(255,255,255,0.1);
-}
-
-.brand-logo svg {
-    width: 30px;
-    height: 30px;
+    padding: 2px;
+    border-radius: 4px;
+    background: #f7f2e9;
+    object-fit: contain;
 }
 
 .nav-links {

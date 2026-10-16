@@ -73,20 +73,11 @@
       align-items: center;
     }
 
-    /* Text-based brand mark */
-    .brand-name {
-      margin-bottom: 23px;
-      color: #403837;
-      font-family: "Cormorant Garamond", Georgia, serif;
-      font-size: 25px;
-      font-weight: 400;
-      line-height: 0.82;
-      letter-spacing: -0.7px;
-      text-transform: uppercase;
-    }
-
-    .brand-name span {
+    .brand-logo {
       display: block;
+      width: 150px;
+      height: auto;
+      margin-bottom: 23px;
     }
 
     .thank-you {

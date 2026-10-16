@@ -52,32 +52,17 @@
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
     }
 
-    /* Temporary text-based logo */
     .brand {
       text-align: center;
       margin-bottom: 32px;
     }
 
-    .brand-mark {
-      width: 62px;
-      height: 62px;
+    .brand-logo {
+      display: block;
+      width: 190px;
+      max-width: 100%;
+      height: auto;
       margin: 0 auto 14px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border: 2px solid #80604d;
-      border-radius: 50%;
-      color: #80604d;
-      font-family: Georgia, serif;
-      font-size: 32px;
-    }
-
-    .brand h1 {
-      color: #604838;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 25px;
-      font-weight: normal;
-      letter-spacing: 3px;
     }
 
     .brand p {
@@ -177,10 +162,6 @@
       .login-card {
         padding: 32px 24px;
       }
-
-      .brand h1 {
-        font-size: 22px;
-      }
     }
 
     @media (max-height: 600px) {
@@ -199,10 +180,8 @@
         margin-bottom: 20px;
       }
 
-      .brand-mark {
-        width: 48px;
-        height: 48px;
-        font-size: 25px;
+      .brand-logo {
+        width: 150px;
       }
     }
   

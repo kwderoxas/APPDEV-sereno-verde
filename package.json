@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node server.js",
+    "start": "node server/db-setup.js && node server.js",
     "db:setup": "node server/db-setup.js"
   },
   "dependencies": {
@@ -13,6 +13,6 @@
     "express-rate-limit": "^8.1.0",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
-    "mysql2": "^3.24.6"
+    "pg": "^8.23.1"
   }
 }

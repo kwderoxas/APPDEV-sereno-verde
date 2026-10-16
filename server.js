@@ -6,20 +6,13 @@ const express = require("express");
 const session = require("express-session");
 const rateLimit = require("express-rate-limit").rateLimit;
 const helmet = require("helmet");
-const mysql = require("mysql2/promise");
+const { Pool } = require("pg");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
 app.set("trust proxy", 1);
-const databaseConfig = {
-    host: process.env.DB_HOST || "127.0.0.1",
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME || "sereno_verde"
-};
 
-for (const name of ["DB_USER", "DB_PASSWORD", "SESSION_SECRET"]) {
+for (const name of ["DATABASE_URL", "SESSION_SECRET"]) {
     if (!process.env[name]) {
         console.error(`Missing ${name}. Set it in the deployment environment or local .env file.`);
         process.exit(1);
@@ -45,19 +38,18 @@ if (process.env.SESSION_SECRET.includes("replace-with")) {
     process.exit(1);
 }
 
-const pool = mysql.createPool({
-    ...databaseConfig,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    charset: "utf8mb4"
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production"
+        ? { rejectUnauthorized: false }
+        : undefined
 });
 
-class MySQLSessionStore extends session.Store {
+class PostgreSQLSessionStore extends session.Store {
     get(sessionId, callback) {
-        pool.execute("SELECT expires, data FROM admin_sessions WHERE session_id = ?", [sessionId])
-            .then(([rows]) => {
-                const record = rows[0];
+        pool.query("SELECT expires, data FROM admin_sessions WHERE session_id = $1", [sessionId])
+            .then(result => {
+                const record = result.rows[0];
                 if (!record) return callback(null, null);
                 if (Number(record.expires) <= Date.now()) {
                     return this.destroy(sessionId, error => callback(error, null));
@@ -71,15 +63,16 @@ class MySQLSessionStore extends session.Store {
         const expiration = sessionData.cookie?.expires
             ? new Date(sessionData.cookie.expires).getTime()
             : Date.now() + 8 * 60 * 60 * 1000;
-        pool.execute(
-            `INSERT INTO admin_sessions (session_id, expires, data) VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE expires = VALUES(expires), data = VALUES(data)`,
+        pool.query(
+            `INSERT INTO admin_sessions (session_id, expires, data) VALUES ($1, $2, $3)
+             ON CONFLICT (session_id) DO UPDATE
+             SET expires = EXCLUDED.expires, data = EXCLUDED.data`,
             [sessionId, expiration, JSON.stringify(sessionData)]
         ).then(() => callback()).catch(callback);
     }
 
     destroy(sessionId, callback = () => {}) {
-        pool.execute("DELETE FROM admin_sessions WHERE session_id = ?", [sessionId])
+        pool.query("DELETE FROM admin_sessions WHERE session_id = $1", [sessionId])
             .then(() => callback()).catch(callback);
     }
 
@@ -87,14 +80,14 @@ class MySQLSessionStore extends session.Store {
         const expiration = sessionData.cookie?.expires
             ? new Date(sessionData.cookie.expires).getTime()
             : Date.now() + 8 * 60 * 60 * 1000;
-        pool.execute("UPDATE admin_sessions SET expires = ? WHERE session_id = ?", [expiration, sessionId])
+        pool.query("UPDATE admin_sessions SET expires = $1 WHERE session_id = $2", [expiration, sessionId])
             .then(() => callback()).catch(callback);
     }
 }
 
-const sessionStore = new MySQLSessionStore();
+const sessionStore = new PostgreSQLSessionStore();
 const sessionCleanup = setInterval(() => {
-    pool.execute("DELETE FROM admin_sessions WHERE expires <= ?", [Date.now()])
+    pool.query("DELETE FROM admin_sessions WHERE expires <= $1", [Date.now()])
         .catch(error => console.error("Could not remove expired admin sessions:", error.message));
 }, 30 * 60 * 1000);
 sessionCleanup.unref();
@@ -226,8 +219,8 @@ function validateBooking(body) {
 app.post("/api/auth/login", loginLimiter, asyncRoute(async (req, res) => {
     const username = requiredText(req.body.username, "Username", 80);
     const password = requiredPassword(req.body.password, "Password");
-    const [admins] = await pool.execute("SELECT id, username, password_hash FROM admins WHERE username = ? LIMIT 1", [username]);
-    const admin = admins[0];
+    const admins = await pool.query("SELECT id, username, password_hash FROM admins WHERE username = $1 LIMIT 1", [username]);
+    const admin = admins.rows[0];
 
     if (!admin || !(await bcrypt.compare(password, admin.password_hash))) {
         return res.status(401).json({ error: "Incorrect username or password." });
@@ -264,17 +257,20 @@ app.patch("/api/auth/credentials", requireAdmin, asyncRoute(async (req, res) => 
     }
     if (password.length < 12) return res.status(400).json({ error: "New password must contain at least 12 characters." });
 
-    const [admins] = await pool.execute("SELECT id, password_hash FROM admins WHERE id = ? LIMIT 1", [req.session.admin.id]);
-    const admin = admins[0];
+    const admins = await pool.query("SELECT id, password_hash FROM admins WHERE id = $1 LIMIT 1", [req.session.admin.id]);
+    const admin = admins.rows[0];
     if (!admin || !(await bcrypt.compare(currentPassword, admin.password_hash))) {
         return res.status(403).json({ error: "Current password is incorrect." });
     }
 
     try {
         const passwordHash = await bcrypt.hash(password, 12);
-        await pool.execute("UPDATE admins SET username = ?, password_hash = ? WHERE id = ?", [username, passwordHash, admin.id]);
+        await pool.query(
+            "UPDATE admins SET username = $1, password_hash = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3",
+            [username, passwordHash, admin.id]
+        );
     } catch (error) {
-        if (error.code === "ER_DUP_ENTRY") return res.status(409).json({ error: "That username is already in use." });
+        if (error.code === "23505") return res.status(409).json({ error: "That username is already in use." });
         throw error;
     }
 
@@ -283,8 +279,8 @@ app.patch("/api/auth/credentials", requireAdmin, asyncRoute(async (req, res) => 
 }));
 
 app.get("/api/settings", requireAdmin, asyncRoute(async (req, res) => {
-    const [rows] = await pool.execute("SELECT setting_value FROM admin_settings WHERE setting_key = 'theme_color'");
-    res.json({ themeColor: rows[0]?.setting_value || "#a9856d" });
+    const result = await pool.query("SELECT setting_value FROM admin_settings WHERE setting_key = 'theme_color'");
+    res.json({ themeColor: result.rows[0]?.setting_value || "#a9856d" });
 }));
 
 app.put("/api/settings", requireAdmin, asyncRoute(async (req, res) => {
@@ -292,69 +288,74 @@ app.put("/api/settings", requireAdmin, asyncRoute(async (req, res) => {
     if (!/^#[0-9a-fA-F]{6}$/.test(themeColor)) {
         return res.status(400).json({ error: "Theme color must be a six-digit hex color." });
     }
-    await pool.execute(
-        "INSERT INTO admin_settings (setting_key, setting_value) VALUES ('theme_color', ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)",
+    await pool.query(
+        `INSERT INTO admin_settings (setting_key, setting_value) VALUES ('theme_color', $1)
+         ON CONFLICT (setting_key) DO UPDATE
+         SET setting_value = EXCLUDED.setting_value, updated_at = CURRENT_TIMESTAMP`,
         [themeColor]
     );
     res.json({ themeColor });
 }));
 
 app.get("/api/bookings", requireAdmin, asyncRoute(async (req, res) => {
-    const [rows] = await pool.execute(`
-        SELECT b.id, g.full_name AS fullName, g.fb_name AS fbName, g.email, g.phone,
+    const result = await pool.query(`
+        SELECT b.id, g.full_name AS "fullName", g.fb_name AS "fbName", g.email, g.phone,
             g.region, g.province, g.city,
-            DATE_FORMAT(b.booking_date, '%Y-%m-%d') AS booking_date, b.accommodation,
-            b.booking_type, b.event_type AS eventType, b.guest_count AS guests,
-            b.special_requests AS specialRequests, b.status,
-            b.created_at AS createdAt
+            to_char(b.booking_date, 'YYYY-MM-DD') AS booking_date, b.accommodation,
+            b.booking_type, b.event_type AS "eventType", b.guest_count AS guests,
+            b.special_requests AS "specialRequests", b.status,
+            b.created_at AS "createdAt"
         FROM bookings b
         JOIN guests g ON g.id = b.guest_id
         ORDER BY b.created_at DESC
     `);
-    res.json({ bookings: rows });
+    res.json({ bookings: result.rows });
 }));
 
 app.get("/api/availability", asyncRoute(async (req, res) => {
-    const [rows] = await pool.execute(
-        "SELECT DATE_FORMAT(booking_date, '%Y-%m-%d') AS booking_date, accommodation, status FROM bookings WHERE status NOT IN ('cancelled', 'rejected')"
+    const result = await pool.query(
+        "SELECT to_char(booking_date, 'YYYY-MM-DD') AS booking_date, accommodation, status FROM bookings WHERE status NOT IN ('cancelled', 'rejected')"
     );
-    res.json({ bookings: rows });
+    res.json({ bookings: result.rows });
 }));
 
 app.post("/api/bookings", submissionLimiter, asyncRoute(async (req, res) => {
     const booking = validateBooking(req.body);
-    const connection = await pool.getConnection();
+    const connection = await pool.connect();
 
     try {
-        await connection.beginTransaction();
-        const [conflicts] = await connection.execute(
-            "SELECT id FROM bookings WHERE booking_date = ? AND accommodation = ? AND status NOT IN ('cancelled', 'rejected') FOR UPDATE",
+        await connection.query("BEGIN");
+        const conflicts = await connection.query(
+            "SELECT id FROM bookings WHERE booking_date = $1 AND accommodation = $2 AND status NOT IN ('cancelled', 'rejected') FOR UPDATE",
             [booking.bookingDate, booking.accommodation]
         );
-        if (conflicts.length) {
-            await connection.rollback();
+        if (conflicts.rows.length) {
+            await connection.query("ROLLBACK");
             return res.status(409).json({ error: "This date is no longer available for that accommodation." });
         }
 
-        await connection.execute(
+        const guest = await connection.query(
             `INSERT INTO guests (full_name, fb_name, email, phone, region, province, city)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), fb_name = VALUES(fb_name),
-                phone = VALUES(phone), region = VALUES(region), province = VALUES(province), city = VALUES(city)`,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (email) DO UPDATE SET
+                full_name = EXCLUDED.full_name, fb_name = EXCLUDED.fb_name,
+                phone = EXCLUDED.phone, region = EXCLUDED.region, province = EXCLUDED.province,
+                city = EXCLUDED.city, updated_at = CURRENT_TIMESTAMP
+             RETURNING id`,
             [booking.fullName, booking.fbName, booking.email, booking.phone, booking.region, booking.province, booking.city]
         );
-        const [guestRows] = await connection.execute("SELECT id FROM guests WHERE email = ? FOR UPDATE", [booking.email]);
-        const [result] = await connection.execute(
+        const result = await connection.query(
             `INSERT INTO bookings
              (guest_id, booking_date, accommodation, booking_type, event_type, guest_count, special_requests)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [guestRows[0].id, booking.bookingDate, booking.accommodation, booking.bookingType,
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING id`,
+            [guest.rows[0].id, booking.bookingDate, booking.accommodation, booking.bookingType,
                 booking.eventType, booking.guests, booking.specialRequests || null]
         );
-        await connection.commit();
-        res.status(201).json({ id: result.insertId, status: "pending" });
+        await connection.query("COMMIT");
+        res.status(201).json({ id: result.rows[0].id, status: "pending" });
     } catch (error) {
-        await connection.rollback();
+        await connection.query("ROLLBACK");
         throw error;
     } finally {
         connection.release();
@@ -374,33 +375,33 @@ app.put("/api/bookings/:id", requireAdmin, asyncRoute(async (req, res) => {
         return res.status(400).json({ error: "Booking update contains an invalid value." });
     }
     if (!["cancelled", "rejected"].includes(status)) {
-        const [conflicts] = await pool.execute(
+        const conflicts = await pool.query(
             `SELECT id FROM bookings
-             WHERE booking_date = ? AND accommodation = ? AND status NOT IN ('cancelled', 'rejected') AND id <> ?
+             WHERE booking_date = $1 AND accommodation = $2 AND status NOT IN ('cancelled', 'rejected') AND id <> $3
              LIMIT 1`,
             [date, accommodation, id]
         );
-        if (conflicts.length) return res.status(409).json({ error: "That date is already booked for the selected accommodation." });
+        if (conflicts.rows.length) return res.status(409).json({ error: "That date is already booked for the selected accommodation." });
     }
-    const [result] = await pool.execute(
-        "UPDATE bookings SET booking_date = ?, accommodation = ?, booking_type = ?, status = ? WHERE id = ?",
+    const result = await pool.query(
+        "UPDATE bookings SET booking_date = $1, accommodation = $2, booking_type = $3, status = $4 WHERE id = $5",
         [date, accommodation, bookingType, status, id]
     );
-    if (!result.affectedRows) return res.status(404).json({ error: "Booking not found." });
+    if (!result.rowCount) return res.status(404).json({ error: "Booking not found." });
     res.json({ updated: true });
 }));
 
 app.get("/api/guests", requireAdmin, asyncRoute(async (req, res) => {
-    const [rows] = await pool.execute(`
-        SELECT g.id, g.full_name AS fullName, g.fb_name AS fbName, g.email, g.phone,
-            g.region, g.province, g.city, COUNT(b.id) AS bookingCount,
-            DATE_FORMAT(MAX(b.booking_date), '%Y-%m-%d') AS latestBookingDate
+    const result = await pool.query(`
+        SELECT g.id, g.full_name AS "fullName", g.fb_name AS "fbName", g.email, g.phone,
+            g.region, g.province, g.city, COUNT(b.id) AS "bookingCount",
+            to_char(MAX(b.booking_date), 'YYYY-MM-DD') AS "latestBookingDate"
         FROM guests g
         LEFT JOIN bookings b ON b.guest_id = g.id
         GROUP BY g.id
         ORDER BY g.full_name
     `);
-    res.json({ guests: rows });
+    res.json({ guests: result.rows });
 }));
 
 app.get("/api/feedback", asyncRoute(async (req, res) => {
@@ -410,15 +411,15 @@ app.get("/api/feedback", asyncRoute(async (req, res) => {
     const parameters = [];
     let where = "";
     if (req.query.villa !== undefined) {
-        where = "WHERE f.villa = ?";
+        where = "WHERE f.villa = $1";
         parameters.push(validVilla(req.query.villa));
     }
-    const [rows] = await pool.execute(
-        `SELECT f.id, f.guest_name AS name, f.villa, f.rating, f.comment AS feedback, f.created_at AS createdAt
+    const result = await pool.query(
+        `SELECT f.id, f.guest_name AS name, f.villa, f.rating, f.comment AS feedback, f.created_at AS "createdAt"
          FROM feedback f ${where} ORDER BY f.created_at DESC`,
         parameters
     );
-    res.json({ reviews: rows });
+    res.json({ reviews: result.rows });
 }));
 
 app.post("/api/feedback", submissionLimiter, asyncRoute(async (req, res) => {
@@ -432,11 +433,11 @@ app.post("/api/feedback", submissionLimiter, asyncRoute(async (req, res) => {
     }
     let guestId = null;
     if (email) {
-        const [guests] = await pool.execute("SELECT id FROM guests WHERE email = ? LIMIT 1", [email]);
-        guestId = guests[0]?.id || null;
+        const guests = await pool.query("SELECT id FROM guests WHERE email = $1 LIMIT 1", [email]);
+        guestId = guests.rows[0]?.id || null;
     }
-    await pool.execute(
-        "INSERT INTO feedback (guest_id, guest_name, villa, rating, comment) VALUES (?, ?, ?, ?, ?)",
+    await pool.query(
+        "INSERT INTO feedback (guest_id, guest_name, villa, rating, comment) VALUES ($1, $2, $3, $4, $5)",
         [guestId, name, villa, rating, feedback]
     );
     res.status(201).json({ saved: true });
@@ -495,7 +496,7 @@ async function start() {
 }
 
 start().catch(error => {
-    console.error("Could not connect to MySQL. Check DB_HOST, DB_PORT, DB_NAME, DB_USER, and DB_PASSWORD in .env.");
+    console.error("Could not connect to PostgreSQL. Check DATABASE_URL in the deployment environment or local .env file.");
     console.error(error.message);
     process.exit(1);
 });

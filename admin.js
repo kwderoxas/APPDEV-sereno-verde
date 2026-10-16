@@ -145,6 +145,12 @@ function getMonthBookings(year, monthIndex) {
     return allBookings.filter(booking => bookingDate(booking).startsWith(prefix));
 }
 
+function sortByDate(bookings) {
+    return [...bookings].sort((a, b) =>
+        bookingDate(a).localeCompare(bookingDate(b))
+    );
+}
+
 function getStayLabel(type) {
     if (type.includes("day")) return "Daycation";
     if (type.includes("night")) return "Nightcation";

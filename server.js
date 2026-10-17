@@ -7,6 +7,7 @@ const session = require("express-session");
 const rateLimit = require("express-rate-limit").rateLimit;
 const helmet = require("helmet");
 const { Pool } = require("pg");
+const { sendBookingConfirmation } = require("./server/booking-email");
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -229,7 +230,7 @@ async function hasBookingConflict(connection, date, accommodation, bookingType, 
          WHERE booking_date = $1 AND accommodation = $2
             AND status NOT IN ('cancelled', 'rejected')
             AND ($3::bigint IS NULL OR id <> $3)
-         FOR UPDATE`,
+        `,
         [date, accommodation, excludeId || null]
     );
 
@@ -414,6 +415,47 @@ app.put("/api/bookings/:id", requireAdmin, asyncRoute(async (req, res) => {
             }
         }
 
+        const bookingResult = await connection.query(
+            `SELECT b.id, b.status,
+                g.full_name AS "fullName", g.email,
+                to_char(b.booking_date, 'YYYY-MM-DD') AS "bookingDate",
+                b.accommodation, b.booking_type AS "bookingType",
+                b.event_type AS "eventType", b.guest_count AS guests,
+                b.special_requests AS "specialRequests"
+             FROM bookings b
+             JOIN guests g ON g.id = b.guest_id
+             WHERE b.id = $1
+             FOR UPDATE OF b`,
+            [id]
+        );
+        const booking = bookingResult.rows[0];
+        if (!booking) {
+            await connection.query("ROLLBACK");
+            return res.status(404).json({ error: "Booking not found." });
+        }
+
+        const shouldSendConfirmation =
+            status === "confirmed" && booking.status !== "confirmed";
+
+        if (shouldSendConfirmation) {
+            try {
+                await sendBookingConfirmation({
+                    ...booking,
+                    bookingDate: date,
+                    accommodation,
+                    bookingType,
+                    guests: booking.guests,
+                    id
+                });
+            } catch (error) {
+                console.error("Could not send booking confirmation email:", error);
+                throw Object.assign(
+                    new Error("The booking was not confirmed because the confirmation email could not be sent. Check the SMTP settings and try again."),
+                    { status: 502 }
+                );
+            }
+        }
+
         const result = await connection.query(
             "UPDATE bookings SET booking_date = $1, accommodation = $2, booking_type = $3, status = $4 WHERE id = $5",
             [date, accommodation, bookingType, status, id]
@@ -424,7 +466,7 @@ app.put("/api/bookings/:id", requireAdmin, asyncRoute(async (req, res) => {
         }
 
         await connection.query("COMMIT");
-        res.json({ updated: true });
+        res.json({ updated: true, confirmationEmailSent: shouldSendConfirmation });
     } catch (error) {
         await connection.query("ROLLBACK");
         throw error;

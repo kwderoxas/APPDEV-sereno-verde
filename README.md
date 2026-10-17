@@ -32,6 +32,28 @@ prompted. The service initializes the database schema and initial admin
 account before starting the server. Existing admin passwords are not replaced.
 The `/api/health` health check verifies the database connection.
 
+### Booking confirmation emails
+
+When an administrator confirms a booking, the service emails the guest a
+confirmation with the booking reference, date, stay, accommodation, guest
+count, event, special requests, and check-in/check-out schedule. The email
+includes the Sereno Verde logo. Entry is listed as 10 minutes before the
+scheduled check-in time.
+
+Configure the following SMTP environment variables in Render (or in local
+`.env`) before confirming bookings:
+
+- `SMTP_HOST`: mail provider SMTP host.
+- `SMTP_PORT`: SMTP port, typically `587` for STARTTLS or `465` for TLS.
+- `SMTP_SECURE`: set to `false` for port 587 or `true` for port 465.
+- `SMTP_USER` and `SMTP_PASS`: SMTP login credentials or provider app password.
+- `SMTP_FROM`: verified sender address, for example `Sereno Verde <bookings@example.com>`.
+
+If email delivery fails or SMTP is not configured, the booking is not marked
+confirmed; the admin dashboard displays an error so the settings can be fixed
+and the confirmation retried. A successful confirmation email is only sent
+once for each booking.
+
 The Blueprint uses Render's free PostgreSQL plan, which expires after 30 days.
 Choose a paid database plan in `render.yaml` before relying on it for
 persistent production data. A new Render database starts empty; existing

@@ -1017,7 +1017,9 @@ document.getElementById("bookingEditForm").addEventListener("submit", async even
 
         closeBookingModal();
         await loadBookings();
-        showToast("Booking updated.");
+        showToast(result.confirmationEmailSent
+            ? "Booking confirmed and confirmation email sent to the guest."
+            : "Booking updated.");
     } catch (error) {
         showToast(error.message);
     }

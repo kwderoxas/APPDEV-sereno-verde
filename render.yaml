@@ -24,11 +24,7 @@ services:
         sync: false
       - key: SESSION_SECRET
         sync: false
-      - key: GMAIL_OAUTH_CLIENT_ID
+      - key: SENDGRID_API_KEY
         sync: false
-      - key: GMAIL_OAUTH_CLIENT_SECRET
-        sync: false
-      - key: GMAIL_OAUTH_REFRESH_TOKEN
-        sync: false
-      - key: GMAIL_FROM
+      - key: SENDGRID_FROM
         sync: false

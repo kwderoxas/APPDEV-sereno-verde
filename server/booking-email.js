@@ -1,9 +1,5 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { randomBytes } = require("node:crypto");
-
-let cachedAccessToken = null;
-let accessTokenExpiresAt = 0;
 
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -152,116 +148,59 @@ function createBookingConfirmation(booking) {
     };
 }
 
-async function getAccessToken() {
-    const {
-        GMAIL_OAUTH_CLIENT_ID,
-        GMAIL_OAUTH_CLIENT_SECRET,
-        GMAIL_OAUTH_REFRESH_TOKEN
-    } = process.env;
-    if (!GMAIL_OAUTH_CLIENT_ID || !GMAIL_OAUTH_CLIENT_SECRET || !GMAIL_OAUTH_REFRESH_TOKEN) {
-        throw new Error(
-            "Gmail API is not configured. Set GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, and GMAIL_OAUTH_REFRESH_TOKEN."
-        );
-    }
-
-    if (cachedAccessToken && Date.now() < accessTokenExpiresAt - 60_000) {
-        return cachedAccessToken;
-    }
-
-    const response = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-            client_id: GMAIL_OAUTH_CLIENT_ID,
-            client_secret: GMAIL_OAUTH_CLIENT_SECRET,
-            refresh_token: GMAIL_OAUTH_REFRESH_TOKEN,
-            grant_type: "refresh_token"
-        }),
-        signal: AbortSignal.timeout(15_000)
-    });
-    const result = await response.json();
-    if (!response.ok || !result.access_token) {
-        throw new Error(`Gmail OAuth token refresh failed (HTTP ${response.status}).`);
-    }
-
-    cachedAccessToken = result.access_token;
-    accessTokenExpiresAt = Date.now() + Number(result.expires_in || 3600) * 1000;
-    return cachedAccessToken;
-}
-
-function buildRawMessage(booking, from) {
+function buildSendGridPayload(booking, from) {
     const email = createBookingConfirmation(booking);
-    const relatedBoundary = `related_${randomBytes(12).toString("hex")}`;
-    const alternativeBoundary = `alternative_${randomBytes(12).toString("hex")}`;
-    const safeHeader = value => String(value).replace(/[\r\n]+/g, " ").trim();
-    const base64 = value => Buffer.from(value, "utf8").toString("base64").match(/.{1,76}/g)?.join("\r\n") || "";
-    const logo = fs.readFileSync(
-        path.join(__dirname, "..", "images", "logoSV.PNG")
-    ).toString("base64").match(/.{1,76}/g).join("\r\n");
+    const address = String(from).match(/^\s*(.*?)\s*<([^<>]+)>\s*$/);
+    const sender = address
+        ? { name: address[1], email: address[2] }
+        : { email: String(from).trim() };
 
-    const mime = [
-        `From: ${safeHeader(from)}`,
-        `To: ${safeHeader(booking.email)}`,
-        `Subject: ${safeHeader(email.subject)}`,
-        "MIME-Version: 1.0",
-        `Content-Type: multipart/related; boundary="${relatedBoundary}"`,
-        "",
-        `--${relatedBoundary}`,
-        `Content-Type: multipart/alternative; boundary="${alternativeBoundary}"`,
-        "",
-        `--${alternativeBoundary}`,
-        "Content-Type: text/plain; charset=UTF-8",
-        "Content-Transfer-Encoding: base64",
-        "",
-        base64(email.text),
-        `--${alternativeBoundary}`,
-        "Content-Type: text/html; charset=UTF-8",
-        "Content-Transfer-Encoding: base64",
-        "",
-        base64(email.html),
-        `--${alternativeBoundary}--`,
-        `--${relatedBoundary}`,
-        "Content-Type: image/png; name=\"sereno-verde-logo.png\"",
-        "Content-Transfer-Encoding: base64",
-        "Content-ID: <sereno-verde-logo>",
-        "Content-Disposition: inline; filename=\"sereno-verde-logo.png\"",
-        "",
-        logo,
-        `--${relatedBoundary}--`,
-        ""
-    ].join("\r\n");
-
-    return Buffer.from(mime).toString("base64url");
+    return {
+        personalizations: [{
+            to: [{ email: booking.email }],
+            subject: email.subject
+        }],
+        from: sender,
+        content: [
+            { type: "text/plain", value: email.text },
+            { type: "text/html", value: email.html }
+        ],
+        attachments: [{
+            content: fs.readFileSync(
+                path.join(__dirname, "..", "images", "logoSV.PNG")
+            ).toString("base64"),
+            filename: "sereno-verde-logo.png",
+            type: "image/png",
+            disposition: "inline",
+            content_id: "sereno-verde-logo"
+        }]
+    };
 }
 
 async function sendBookingConfirmation(booking) {
-    const { GMAIL_FROM } = process.env;
-    if (!GMAIL_FROM) {
-        throw new Error("Gmail API is not configured. Set GMAIL_FROM.");
+    const { SENDGRID_API_KEY, SENDGRID_FROM } = process.env;
+    if (!SENDGRID_API_KEY || !SENDGRID_FROM) {
+        throw new Error("SendGrid is not configured. Set SENDGRID_API_KEY and SENDGRID_FROM.");
     }
 
-    const accessToken = await getAccessToken();
-    const response = await fetch(
-        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-        {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ raw: buildRawMessage(booking, GMAIL_FROM) }),
-            signal: AbortSignal.timeout(15_000)
-        }
-    );
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${SENDGRID_API_KEY}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(buildSendGridPayload(booking, SENDGRID_FROM)),
+        signal: AbortSignal.timeout(15_000)
+    });
     if (!response.ok) {
-        throw new Error(`Gmail API send failed (HTTP ${response.status}).`);
+        throw new Error(`SendGrid API send failed (HTTP ${response.status}).`);
     }
-    return response.json();
+    return { accepted: true };
 }
 
 module.exports = {
     bookingSchedule,
-    buildRawMessage,
+    buildSendGridPayload,
     createBookingConfirmation,
     sendBookingConfirmation
 };

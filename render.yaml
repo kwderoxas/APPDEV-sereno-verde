@@ -24,15 +24,11 @@ services:
         sync: false
       - key: SESSION_SECRET
         sync: false
-      - key: SMTP_HOST
+      - key: GMAIL_OAUTH_CLIENT_ID
         sync: false
-      - key: SMTP_PORT
+      - key: GMAIL_OAUTH_CLIENT_SECRET
         sync: false
-      - key: SMTP_SECURE
+      - key: GMAIL_OAUTH_REFRESH_TOKEN
         sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
-        sync: false
-      - key: SMTP_FROM
+      - key: GMAIL_FROM
         sync: false

@@ -40,19 +40,24 @@ count, event, special requests, and check-in/check-out schedule. The email
 includes the Sereno Verde logo. Entry is listed as 10 minutes before the
 scheduled check-in time.
 
-Configure the following SMTP environment variables in Render (or in local
-`.env`) before confirming bookings:
+Gmail SMTP connections time out from Render's free instance, so confirmations
+are sent through the Gmail API over HTTPS. Configure these environment
+variables in Render (or local `.env`) before confirming bookings:
 
-- `SMTP_HOST`: mail provider SMTP host.
-- `SMTP_PORT`: SMTP port, typically `587` for STARTTLS or `465` for TLS.
-- `SMTP_SECURE`: set to `false` for port 587 or `true` for port 465.
-- `SMTP_USER` and `SMTP_PASS`: SMTP login credentials or provider app password.
-- `SMTP_FROM`: verified sender address, for example `Sereno Verde <bookings@example.com>`.
+- `GMAIL_OAUTH_CLIENT_ID`: OAuth client ID from a Google Cloud project with the Gmail API enabled.
+- `GMAIL_OAUTH_CLIENT_SECRET`: OAuth client secret for that client.
+- `GMAIL_OAUTH_REFRESH_TOKEN`: refresh token authorized for the `https://www.googleapis.com/auth/gmail.send` scope.
+- `GMAIL_FROM`: sender address authorized for the OAuth Gmail account, for example `Sereno Verde <bookings@gmail.com>`.
 
-If email delivery fails or SMTP is not configured, the booking is not marked
-confirmed; the admin dashboard displays an error so the settings can be fixed
-and the confirmation retried. A successful confirmation email is only sent
-once for each booking.
+To obtain a refresh token, configure a Google OAuth client, add the account
+as an authorized test user if the consent screen is in testing mode, and
+authorize the Gmail `gmail.send` scope using the Google OAuth Playground with
+the OAuth client's own credentials.
+
+If email delivery fails or Gmail API credentials are missing, the booking is
+not marked confirmed; the admin dashboard displays an error so the settings
+can be fixed and the confirmation retried. A successful confirmation email
+is only sent once for each booking.
 
 The Blueprint uses Render's free PostgreSQL plan, which expires after 30 days.
 Choose a paid database plan in `render.yaml` before relying on it for

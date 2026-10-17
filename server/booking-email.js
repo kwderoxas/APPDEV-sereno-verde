@@ -1,7 +1,9 @@
-const nodemailer = require("nodemailer");
+const fs = require("node:fs");
 const path = require("node:path");
+const { randomBytes } = require("node:crypto");
 
-let transporter;
+let cachedAccessToken = null;
+let accessTokenExpiresAt = 0;
 
 function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
@@ -150,37 +152,116 @@ function createBookingConfirmation(booking) {
     };
 }
 
-function getTransporter() {
-    const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS, SMTP_FROM } = process.env;
-    if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
+async function getAccessToken() {
+    const {
+        GMAIL_OAUTH_CLIENT_ID,
+        GMAIL_OAUTH_CLIENT_SECRET,
+        GMAIL_OAUTH_REFRESH_TOKEN
+    } = process.env;
+    if (!GMAIL_OAUTH_CLIENT_ID || !GMAIL_OAUTH_CLIENT_SECRET || !GMAIL_OAUTH_REFRESH_TOKEN) {
         throw new Error(
-            "Booking confirmation email is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS, and SMTP_FROM."
+            "Gmail API is not configured. Set GMAIL_OAUTH_CLIENT_ID, GMAIL_OAUTH_CLIENT_SECRET, and GMAIL_OAUTH_REFRESH_TOKEN."
         );
     }
 
-    const port = Number(SMTP_PORT || 587);
-    if (!Number.isInteger(port) || port < 1 || port > 65535) {
-        throw new Error("SMTP_PORT must be a valid TCP port.");
+    if (cachedAccessToken && Date.now() < accessTokenExpiresAt - 60_000) {
+        return cachedAccessToken;
     }
 
-    if (!transporter) {
-        transporter = nodemailer.createTransport({
-            host: SMTP_HOST,
-            port,
-            secure: SMTP_SECURE === "true",
-            auth: { user: SMTP_USER, pass: SMTP_PASS }
-        });
+    const response = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+            client_id: GMAIL_OAUTH_CLIENT_ID,
+            client_secret: GMAIL_OAUTH_CLIENT_SECRET,
+            refresh_token: GMAIL_OAUTH_REFRESH_TOKEN,
+            grant_type: "refresh_token"
+        }),
+        signal: AbortSignal.timeout(15_000)
+    });
+    const result = await response.json();
+    if (!response.ok || !result.access_token) {
+        throw new Error(`Gmail OAuth token refresh failed (HTTP ${response.status}).`);
     }
-    return { transporter, from: SMTP_FROM };
+
+    cachedAccessToken = result.access_token;
+    accessTokenExpiresAt = Date.now() + Number(result.expires_in || 3600) * 1000;
+    return cachedAccessToken;
+}
+
+function buildRawMessage(booking, from) {
+    const email = createBookingConfirmation(booking);
+    const relatedBoundary = `related_${randomBytes(12).toString("hex")}`;
+    const alternativeBoundary = `alternative_${randomBytes(12).toString("hex")}`;
+    const safeHeader = value => String(value).replace(/[\r\n]+/g, " ").trim();
+    const base64 = value => Buffer.from(value, "utf8").toString("base64").match(/.{1,76}/g)?.join("\r\n") || "";
+    const logo = fs.readFileSync(
+        path.join(__dirname, "..", "images", "logoSV.PNG")
+    ).toString("base64").match(/.{1,76}/g).join("\r\n");
+
+    const mime = [
+        `From: ${safeHeader(from)}`,
+        `To: ${safeHeader(booking.email)}`,
+        `Subject: ${safeHeader(email.subject)}`,
+        "MIME-Version: 1.0",
+        `Content-Type: multipart/related; boundary="${relatedBoundary}"`,
+        "",
+        `--${relatedBoundary}`,
+        `Content-Type: multipart/alternative; boundary="${alternativeBoundary}"`,
+        "",
+        `--${alternativeBoundary}`,
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: base64",
+        "",
+        base64(email.text),
+        `--${alternativeBoundary}`,
+        "Content-Type: text/html; charset=UTF-8",
+        "Content-Transfer-Encoding: base64",
+        "",
+        base64(email.html),
+        `--${alternativeBoundary}--`,
+        `--${relatedBoundary}`,
+        "Content-Type: image/png; name=\"sereno-verde-logo.png\"",
+        "Content-Transfer-Encoding: base64",
+        "Content-ID: <sereno-verde-logo>",
+        "Content-Disposition: inline; filename=\"sereno-verde-logo.png\"",
+        "",
+        logo,
+        `--${relatedBoundary}--`,
+        ""
+    ].join("\r\n");
+
+    return Buffer.from(mime).toString("base64url");
 }
 
 async function sendBookingConfirmation(booking) {
-    const { transporter: mailTransporter, from } = getTransporter();
-    return mailTransporter.sendMail({
-        from,
-        to: booking.email,
-        ...createBookingConfirmation(booking)
-    });
+    const { GMAIL_FROM } = process.env;
+    if (!GMAIL_FROM) {
+        throw new Error("Gmail API is not configured. Set GMAIL_FROM.");
+    }
+
+    const accessToken = await getAccessToken();
+    const response = await fetch(
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+        {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ raw: buildRawMessage(booking, GMAIL_FROM) }),
+            signal: AbortSignal.timeout(15_000)
+        }
+    );
+    if (!response.ok) {
+        throw new Error(`Gmail API send failed (HTTP ${response.status}).`);
+    }
+    return response.json();
 }
 
-module.exports = { bookingSchedule, createBookingConfirmation, sendBookingConfirmation };
+module.exports = {
+    bookingSchedule,
+    buildRawMessage,
+    createBookingConfirmation,
+    sendBookingConfirmation
+};

@@ -29,13 +29,6 @@ const bookingTypeDetails = {
     }
 };
 
-// Sample calendar statuses for visual demonstration only.
-const sampleCalendarStatuses = {
-    "2026-10-17": "daycation",
-    "2026-10-18": "nightcation",
-    "2026-10-19": "daycation"
-};
-
 function formatDateKey(year, month, day) {
     return [
         year,
@@ -98,51 +91,78 @@ function normalizeAccommodation(booking) {
     ).trim().toLowerCase();
 }
 
-function isSameAccommodation(booking) {
-    const existing = normalizeAccommodation(booking);
-
-    const selected = document.getElementById("accommodation").value
+function getBookingsForDate(dateKey) {
+    const selectedAccommodation = document.getElementById("accommodation").value
         .trim()
         .toLowerCase();
 
-    // If an older booking has no accommodation field,
-    // conservatively treat it as unavailable for all accommodations.
-    if (!existing || !selected) return true;
-
-    return existing === selected;
-}
-
-function getStatusForDate(dateKey) {
-    const dateBookings = bookings.filter(booking => {
-        const date = normalizeBookingDate(booking);
-
+    return bookings.filter(booking => {
         const status = String(
             booking.status || booking.booking_status || "confirmed"
         ).toLowerCase();
-
         const cancelled = [
             "cancelled",
             "canceled",
             "rejected",
             "declined"
         ].includes(status);
+        const existingAccommodation = normalizeAccommodation(booking);
 
-        return date === dateKey && !cancelled;
+        return normalizeBookingDate(booking) === dateKey &&
+            !cancelled &&
+            (!selectedAccommodation ||
+                !existingAccommodation ||
+                existingAccommodation === selectedAccommodation);
     });
+}
 
-    if (dateBookings.length > 0) {
-        const matchingAccommodation = dateBookings.filter(isSameAccommodation);
+function isDateAvailableForBooking(dateKey, bookingType = selectedBookingType) {
+    if (unavailableDates.has(dateKey)) return false;
 
-        if (matchingAccommodation.length > 0) {
-            return "booked";
-        }
+    const dateBookings = getBookingsForDate(dateKey);
+    if (!dateBookings.length) return true;
+    if (dateBookings.some(booking =>
+        String(booking.status || booking.booking_status || "").toLowerCase() === "blocked"
+    )) {
+        return false;
     }
 
-    if (unavailableDates.has(dateKey)) {
-        return unavailableDates.get(dateKey);
+    const types = dateBookings.map(booking =>
+        String(booking.booking_type || booking.bookingType || "22hours").toLowerCase()
+    );
+
+    if (types.some(type => type === "22hours" || !["daycation", "nightcation"].includes(type))) {
+        return false;
     }
 
-    return sampleCalendarStatuses[dateKey] || "available";
+    if (bookingType === "22hours") return false;
+    return !types.includes(bookingType);
+}
+
+function getStatusForDate(dateKey) {
+    if (unavailableDates.has(dateKey)) return unavailableDates.get(dateKey);
+
+    const dateBookings = getBookingsForDate(dateKey);
+    if (dateBookings.some(booking =>
+        String(booking.status || booking.booking_status || "").toLowerCase() === "blocked"
+    )) {
+        return "blocked";
+    }
+
+    const types = dateBookings.map(booking =>
+        String(booking.booking_type || booking.bookingType || "22hours").toLowerCase()
+    );
+
+    if (
+        types.includes("22hours") ||
+        types.some(type => !["daycation", "nightcation"].includes(type)) ||
+        (types.includes("daycation") && types.includes("nightcation"))
+    ) {
+        return "booked";
+    }
+    if (types.includes("nightcation")) return "nightcation";
+    if (types.includes("daycation")) return "daycation";
+    return "available";
 }
 
 function isDateInPast(dateKey) {
@@ -206,14 +226,18 @@ function renderCalendar() {
                 "nightcation"
             );
             button.title = "Past dates cannot be selected";
-        } else if (status === "booked" || status === "blocked") {
+        } else if (!isDateAvailableForBooking(dateKey)) {
             button.disabled = true;
-            button.title = status === "booked"
-                ? "This date is already booked for this accommodation"
-                : "This date is blocked";
+            button.title = status === "blocked"
+                ? "This date is blocked"
+                : status === "booked"
+                    ? "This date is fully booked for this accommodation"
+                    : bookingTypeDetails[selectedBookingType].label +
+                        " is already booked for this accommodation";
         } else {
             button.addEventListener("click", () => selectDate(dateKey));
-            button.title = "Select " + formatReadableDate(dateKey);
+            button.title = "Select " + formatReadableDate(dateKey) +
+                (status === "available" ? "" : " for " + bookingTypeDetails[selectedBookingType].label);
         }
 
         calendarGrid.appendChild(button);
@@ -221,13 +245,7 @@ function renderCalendar() {
 }
 
 function selectDate(dateKey) {
-    const status = getStatusForDate(dateKey);
-
-    if (
-        status === "booked" ||
-        status === "blocked" ||
-        isDateInPast(dateKey)
-    ) {
+    if (isDateInPast(dateKey) || !isDateAvailableForBooking(dateKey)) {
         calendarMessage.textContent =
             "This date is unavailable. Please choose another date.";
         return;
@@ -272,6 +290,12 @@ document.querySelectorAll(".booking-option").forEach(option => {
             item.setAttribute("aria-pressed", String(isActive));
         });
 
+        if (selectedDate && !isDateAvailableForBooking(selectedDate)) {
+            selectedDate = null;
+            calendarMessage.textContent =
+                "That date is unavailable for this booking type. Please choose another date.";
+        }
+        renderCalendar();
         updateBookingSummary();
         clearStatus();
     });
@@ -300,7 +324,13 @@ document.getElementById("nextMonth").addEventListener("click", () => {
 
 // Update availability when accommodation changes
 document.getElementById("accommodation").addEventListener("change", () => {
+    if (selectedDate && !isDateAvailableForBooking(selectedDate)) {
+        selectedDate = null;
+        calendarMessage.textContent =
+            "That date is unavailable for this accommodation. Please choose another date.";
+    }
     renderCalendar();
+    updateBookingSummary();
     clearStatus();
 });
 
@@ -333,11 +363,9 @@ bookingForm.addEventListener("submit", async event => {
         return;
     }
 
-    const status = getStatusForDate(selectedDate);
-
-    if (status === "booked" || status === "blocked") {
+    if (!isDateAvailableForBooking(selectedDate)) {
         showStatus(
-            "This date is no longer available. Please select another date.",
+            "This date or booking type is no longer available. Please select another date.",
             "error"
         );
 
@@ -382,6 +410,12 @@ fetch("/api/availability")
         if (!response.ok) throw new Error("Could not load availability from the server.");
         const result = await response.json();
         bookings = Array.isArray(result.bookings) ? result.bookings : [];
+        if (selectedDate && !isDateAvailableForBooking(selectedDate)) {
+            selectedDate = null;
+            calendarMessage.textContent =
+                "That date is no longer available. Please choose another date.";
+            updateBookingSummary();
+        }
         renderCalendar();
     })
     .catch(error => {

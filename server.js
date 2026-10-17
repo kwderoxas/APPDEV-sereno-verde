@@ -216,6 +216,32 @@ function validateBooking(body) {
     };
 }
 
+async function lockBookingSlot(connection, date, accommodation) {
+    await connection.query(
+        "SELECT pg_advisory_xact_lock(hashtext($1))",
+        [`${date}:${accommodation}`]
+    );
+}
+
+async function hasBookingConflict(connection, date, accommodation, bookingType, excludeId) {
+    const result = await connection.query(
+        `SELECT booking_type, status FROM bookings
+         WHERE booking_date = $1 AND accommodation = $2
+            AND status NOT IN ('cancelled', 'rejected')
+            AND ($3::bigint IS NULL OR id <> $3)
+         FOR UPDATE`,
+        [date, accommodation, excludeId || null]
+    );
+
+    return result.rows.some(booking => {
+        const existingType = String(booking.booking_type).toLowerCase();
+        if (booking.status === "blocked") return true;
+        if (bookingType === "22hours" || existingType === "22hours") return true;
+        if (!["daycation", "nightcation"].includes(existingType)) return true;
+        return bookingType === existingType;
+    });
+}
+
 app.post("/api/auth/login", loginLimiter, asyncRoute(async (req, res) => {
     const username = requiredText(req.body.username, "Username", 80);
     const password = requiredPassword(req.body.password, "Password");
@@ -314,7 +340,7 @@ app.get("/api/bookings", requireAdmin, asyncRoute(async (req, res) => {
 
 app.get("/api/availability", asyncRoute(async (req, res) => {
     const result = await pool.query(
-        "SELECT to_char(booking_date, 'YYYY-MM-DD') AS booking_date, accommodation, status FROM bookings WHERE status NOT IN ('cancelled', 'rejected')"
+        "SELECT to_char(booking_date, 'YYYY-MM-DD') AS booking_date, accommodation, booking_type, status FROM bookings WHERE status NOT IN ('cancelled', 'rejected')"
     );
     res.json({ bookings: result.rows });
 }));
@@ -325,13 +351,15 @@ app.post("/api/bookings", submissionLimiter, asyncRoute(async (req, res) => {
 
     try {
         await connection.query("BEGIN");
-        const conflicts = await connection.query(
-            "SELECT id FROM bookings WHERE booking_date = $1 AND accommodation = $2 AND status NOT IN ('cancelled', 'rejected') FOR UPDATE",
-            [booking.bookingDate, booking.accommodation]
-        );
-        if (conflicts.rows.length) {
+        await lockBookingSlot(connection, booking.bookingDate, booking.accommodation);
+        if (await hasBookingConflict(
+            connection,
+            booking.bookingDate,
+            booking.accommodation,
+            booking.bookingType
+        )) {
             await connection.query("ROLLBACK");
-            return res.status(409).json({ error: "This date is no longer available for that accommodation." });
+            return res.status(409).json({ error: "This date and booking type are no longer available for that accommodation." });
         }
 
         const guest = await connection.query(
@@ -374,21 +402,35 @@ app.put("/api/bookings/:id", requireAdmin, asyncRoute(async (req, res) => {
         !["pending", "confirmed", "cancelled", "rejected", "blocked"].includes(status)) {
         return res.status(400).json({ error: "Booking update contains an invalid value." });
     }
-    if (!["cancelled", "rejected"].includes(status)) {
-        const conflicts = await pool.query(
-            `SELECT id FROM bookings
-             WHERE booking_date = $1 AND accommodation = $2 AND status NOT IN ('cancelled', 'rejected') AND id <> $3
-             LIMIT 1`,
-            [date, accommodation, id]
+    const connection = await pool.connect();
+
+    try {
+        await connection.query("BEGIN");
+        if (!["cancelled", "rejected"].includes(status)) {
+            await lockBookingSlot(connection, date, accommodation);
+            if (await hasBookingConflict(connection, date, accommodation, bookingType, id)) {
+                await connection.query("ROLLBACK");
+                return res.status(409).json({ error: "That date and booking type are already booked for the selected accommodation." });
+            }
+        }
+
+        const result = await connection.query(
+            "UPDATE bookings SET booking_date = $1, accommodation = $2, booking_type = $3, status = $4 WHERE id = $5",
+            [date, accommodation, bookingType, status, id]
         );
-        if (conflicts.rows.length) return res.status(409).json({ error: "That date is already booked for the selected accommodation." });
+        if (!result.rowCount) {
+            await connection.query("ROLLBACK");
+            return res.status(404).json({ error: "Booking not found." });
+        }
+
+        await connection.query("COMMIT");
+        res.json({ updated: true });
+    } catch (error) {
+        await connection.query("ROLLBACK");
+        throw error;
+    } finally {
+        connection.release();
     }
-    const result = await pool.query(
-        "UPDATE bookings SET booking_date = $1, accommodation = $2, booking_type = $3, status = $4 WHERE id = $5",
-        [date, accommodation, bookingType, status, id]
-    );
-    if (!result.rowCount) return res.status(404).json({ error: "Booking not found." });
-    res.json({ updated: true });
 }));
 
 app.get("/api/guests", requireAdmin, asyncRoute(async (req, res) => {

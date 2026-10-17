@@ -4,6 +4,7 @@ let allBookings = [];
 let selectedCalendarDate = null;
 let adminCalendarDate = new Date();
 let currentEditBooking = null;
+let isEditingBooking = false;
 let feedbackRecords = [];
 
 /* Helpers */
@@ -522,7 +523,7 @@ function getMonthDateCards(year, monthIndex) {
             String(day).padStart(2, "0");
 
         const dayBookings = sortByDate(allBookings.filter(booking =>
-            bookingDate(booking) === dateKey && !isCancelled(booking)
+            bookingDate(booking) === dateKey
         ));
 
         results.push({ dateKey, day, bookings: dayBookings });
@@ -539,7 +540,7 @@ function renderGuestEntry(booking) {
     let typeClass = "whole-day";
     if (type.includes("day")) typeClass = "daycation";
     if (type.includes("night")) typeClass = "nightcation";
-    if (status === "pending") typeClass += " pending";
+    typeClass += " status-" + status;
 
     return `
         <div class="guest-entry ${typeClass}">
@@ -549,8 +550,8 @@ function renderGuestEntry(booking) {
                 ${escapeHTML(accommodationName(booking))}<br>
                 Guests: ${escapeHTML(guestCount(booking))}
             </div>
-            <span class="entry-status">${escapeHTML(status)}</span>
-            <button type="button" class="text-button" data-edit-booking="${escapeHTML(bookingId(booking))}">View / edit</button>
+            <span class="entry-status ${escapeHTML(status)}">${escapeHTML(status)}</span>
+            <button type="button" class="text-button" data-edit-booking="${escapeHTML(bookingId(booking))}">View details</button>
         </div>
     `;
 }
@@ -574,18 +575,30 @@ function renderNewBookings() {
         monthName + " · Daily reservation schedule";
 
     const query = document.getElementById("bookingSearch").value.toLowerCase().trim();
+    const dateFilter = document.getElementById("bookingDateFilter").value;
+    const statusFilter = document.getElementById("bookingStatusFilter").value;
     const cards = getMonthDateCards(year, monthIndex);
 
-    const filteredCards = cards.filter(card => {
-        if (!query) return true;
+    const filteredCards = cards.map(card => {
+        const matchingBookings = card.bookings.filter(booking => {
+            if (statusFilter !== "all" &&
+                normalizedStatus(bookingStatus(booking)) !== statusFilter) {
+                return false;
+            }
 
-        return card.bookings.some(booking => [
-            guestName(booking),
-            guestEmail(booking),
-            accommodationName(booking),
-            stayType(booking),
-            bookingId(booking)
-        ].join(" ").toLowerCase().includes(query));
+            return !query || [
+                guestName(booking),
+                guestEmail(booking),
+                accommodationName(booking),
+                stayType(booking),
+                bookingId(booking)
+            ].join(" ").toLowerCase().includes(query);
+        });
+
+        return { ...card, visibleBookings: matchingBookings };
+    }).filter(card => {
+        const hasFilters = dateFilter === "booked" || statusFilter !== "all" || query;
+        return !hasFilters || card.visibleBookings.length > 0;
     });
 
     if (!filteredCards.length) {
@@ -596,7 +609,8 @@ function renderNewBookings() {
     grid.innerHTML = filteredCards.map(card => {
         const date = new Date(year, monthIndex, card.day);
         const weekday = date.toLocaleDateString("en-US", { weekday: "short" });
-        const activeCount = card.bookings.length;
+        const visibleBookings = card.visibleBookings;
+        const bookingCount = visibleBookings.length;
 
         return `
             <article class="date-card">
@@ -607,18 +621,18 @@ function renderNewBookings() {
                     </div>
                     <div class="date-heading">
                         <h3>${escapeHTML(date.toLocaleDateString("en-US", { month: "long" }))} ${card.day}</h3>
-                        <p>${activeCount} reservation${activeCount === 1 ? "" : "s"}</p>
+                        <p>${bookingCount} reservation${bookingCount === 1 ? "" : "s"}</p>
                     </div>
                 </div>
 
                 <div class="date-card-body">
-                    ${activeCount
-                        ? card.bookings.map(renderGuestEntry).join("")
+                    ${bookingCount
+                        ? visibleBookings.map(renderGuestEntry).join("")
                         : '<div class="empty-date">No reservations</div>'}
                 </div>
 
                 <div class="date-card-foot">
-                    <span>${activeCount ? "Guest schedule" : "Available record slot"}</span>
+                    <span>${bookingCount ? "Guest schedule" : "Available record slot"}</span>
                     <button class="text-button" data-view-date="${card.dateKey}">Details →</button>
                 </div>
             </article>
@@ -629,6 +643,8 @@ function renderNewBookings() {
 document.getElementById("bookingMonthFilter").addEventListener("change", renderNewBookings);
 document.getElementById("bookingYearFilter").addEventListener("change", renderNewBookings);
 document.getElementById("bookingSearch").addEventListener("input", renderNewBookings);
+document.getElementById("bookingDateFilter").addEventListener("change", renderNewBookings);
+document.getElementById("bookingStatusFilter").addEventListener("change", renderNewBookings);
 
 /* Admin calendar */
 
@@ -900,14 +916,40 @@ function openBookingModal(id) {
         type.includes("day") ? "daycation" :
         type.includes("night") ? "nightcation" : "22hours";
 
-    document.getElementById("editAdminNotes").value = "";
+    document.getElementById("viewGuestName").textContent = guestName(booking);
+    document.getElementById("viewGuestEmail").textContent = guestEmail(booking) || "—";
+    document.getElementById("viewGuestPhone").textContent = guestPhone(booking) || "—";
+    document.getElementById("viewBookingDate").textContent = readableDate(bookingDate(booking));
+    document.getElementById("viewAccommodation").textContent = accommodation;
+    document.getElementById("viewBookingType").textContent = getStayLabel(type);
+    document.getElementById("viewEventType").textContent = eventType(booking);
+    document.getElementById("viewGuestCount").textContent = guestCount(booking);
+    document.getElementById("viewSpecialRequests").textContent =
+        fieldValue(booking, ["specialRequests", "special_requests"], "—") || "—";
+    const viewStatus = document.getElementById("viewBookingStatus");
+    viewStatus.textContent = normalizedStatus(bookingStatus(booking));
+    viewStatus.className = "status-pill " + normalizedStatus(bookingStatus(booking));
 
+    setBookingModalMode(false);
     document.getElementById("bookingModal").classList.add("open");
+}
+
+function setBookingModalMode(editing) {
+    isEditingBooking = editing;
+    document.getElementById("bookingDetailsView").hidden = editing;
+    document.getElementById("bookingEditFields").hidden = !editing;
+    document.getElementById("modalTitle").textContent =
+        editing ? "Edit booking" : "Booking details";
+    document.getElementById("editBookingButton").hidden = editing;
+    document.getElementById("saveBookingButton").hidden = !editing;
+    document.getElementById("cancelModal").textContent =
+        editing ? "Cancel editing" : "Close";
 }
 
 function closeBookingModal() {
     document.getElementById("bookingModal").classList.remove("open");
     currentEditBooking = null;
+    setBookingModalMode(false);
 }
 
 document.addEventListener("click", event => {
@@ -929,7 +971,16 @@ document.addEventListener("click", event => {
 });
 
 document.getElementById("closeModal").addEventListener("click", closeBookingModal);
-document.getElementById("cancelModal").addEventListener("click", closeBookingModal);
+document.getElementById("editBookingButton").addEventListener("click", () => {
+    if (currentEditBooking) setBookingModalMode(true);
+});
+document.getElementById("cancelModal").addEventListener("click", () => {
+    if (isEditingBooking) {
+        openBookingModal(bookingId(currentEditBooking));
+        return;
+    }
+    closeBookingModal();
+});
 
 document.getElementById("bookingModal").addEventListener("click", event => {
     if (event.target.id === "bookingModal") closeBookingModal();
@@ -938,7 +989,7 @@ document.getElementById("bookingModal").addEventListener("click", event => {
 document.getElementById("bookingEditForm").addEventListener("submit", async event => {
     event.preventDefault();
 
-    if (!currentEditBooking) return;
+    if (!currentEditBooking || !isEditingBooking) return;
 
     const id = bookingId(currentEditBooking);
 

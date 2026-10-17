@@ -245,6 +245,20 @@
 
                     <label for="bookingYearFilter">Year</label>
                     <select class="control" id="bookingYearFilter"></select>
+
+                    <label for="bookingDateFilter">Dates</label>
+                    <select class="control" id="bookingDateFilter">
+                        <option value="all">All dates</option>
+                        <option value="booked">Dates with bookings</option>
+                    </select>
+
+                    <label for="bookingStatusFilter">Status</label>
+                    <select class="control" id="bookingStatusFilter">
+                        <option value="all">All statuses</option>
+                        <option value="pending">Pending only</option>
+                        <option value="confirmed">Confirmed only</option>
+                        <option value="cancelled">Cancelled only</option>
+                    </select>
                 </div>
 
                 <div class="toolbar-right">
@@ -497,7 +511,7 @@
     </main>
 </div>
 
-<!-- BOOKING DETAILS / STATUS MODAL -->
+<!-- BOOKING DETAILS / EDIT MODAL -->
 <div class="modal-overlay" id="bookingModal">
     <div class="modal">
         <div class="modal-header">
@@ -508,57 +522,64 @@
         <form id="bookingEditForm">
             <input type="hidden" id="editBookingId">
 
-            <div class="field">
-                <label for="editGuestName">Guest name</label>
-                <input id="editGuestName" readonly>
+            <div class="booking-details" id="bookingDetailsView">
+                <div><span>Guest</span><strong id="viewGuestName"></strong></div>
+                <div><span>Email</span><strong id="viewGuestEmail"></strong></div>
+                <div><span>Phone</span><strong id="viewGuestPhone"></strong></div>
+                <div><span>Date</span><strong id="viewBookingDate"></strong></div>
+                <div><span>Accommodation</span><strong id="viewAccommodation"></strong></div>
+                <div><span>Stay type</span><strong id="viewBookingType"></strong></div>
+                <div><span>Event</span><strong id="viewEventType"></strong></div>
+                <div><span>Guests</span><strong id="viewGuestCount"></strong></div>
+                <div><span>Status</span><strong><span id="viewBookingStatus" class="status-pill"></span></strong></div>
+                <div class="booking-detail-wide"><span>Special requests</span><strong id="viewSpecialRequests"></strong></div>
             </div>
 
-            <div class="field">
-                <label for="editBookingDate">Booking date</label>
-                <input id="editBookingDate" type="date" required>
-            </div>
+            <div class="booking-edit-fields" id="bookingEditFields" hidden>
+                <div class="field">
+                    <label for="editGuestName">Guest name</label>
+                    <input id="editGuestName" readonly>
+                </div>
 
-            <div class="field">
-                <label for="editAccommodation">Accommodation</label>
-                <select id="editAccommodation" required>
-                    <option value="Tuscan Villa">Tuscan Villa</option>
-                    <option value="Spanish Villa">Spanish Villa</option>
-                    <option value="Other">Other / To be confirmed</option>
-                </select>
-            </div>
+                <div class="field">
+                    <label for="editBookingDate">Booking date</label>
+                    <input id="editBookingDate" type="date" required>
+                </div>
 
-            <div class="field">
-                <label for="editBookingType">Stay type</label>
-                <select id="editBookingType">
-                    <option value="daycation">Daycation</option>
-                    <option value="nightcation">Nightcation</option>
-                    <option value="22hours">22 Hours stay</option>
-                </select>
-            </div>
+                <div class="field">
+                    <label for="editAccommodation">Accommodation</label>
+                    <select id="editAccommodation" required>
+                        <option value="Tuscan Villa">Tuscan Villa</option>
+                        <option value="Spanish Villa">Spanish Villa</option>
+                        <option value="Other">Other / To be confirmed</option>
+                    </select>
+                </div>
 
-            <div class="field">
-                <label for="editBookingStatus">Booking status</label>
-                <select id="editBookingStatus">
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="blocked">Blocked</option>
-                </select>
-            </div>
+                <div class="field">
+                    <label for="editBookingType">Stay type</label>
+                    <select id="editBookingType">
+                        <option value="daycation">Daycation</option>
+                        <option value="nightcation">Nightcation</option>
+                        <option value="22hours">22 Hours stay</option>
+                    </select>
+                </div>
 
-            <div class="field">
-                <label for="editAdminNotes">Admin notes (local draft only)</label>
-                <textarea id="editAdminNotes" placeholder="Add notes for this booking..."></textarea>
-            </div>
-
-            <div class="info-box">
-                Booking changes are saved to the MySQL database.
+                <div class="field">
+                    <label for="editBookingStatus">Booking status</label>
+                    <select id="editBookingStatus">
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="blocked">Blocked</option>
+                    </select>
+                </div>
             </div>
 
             <div class="modal-actions">
                 <button type="button" class="btn" id="cancelModal">Close</button>
-                <button type="submit" class="btn btn-primary">Save changes</button>
+                <button type="button" class="btn btn-primary" id="editBookingButton">Edit</button>
+                <button type="submit" class="btn btn-primary" id="saveBookingButton" hidden>Save changes</button>
             </div>
         </form>
     </div>
